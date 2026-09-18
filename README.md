@@ -14,6 +14,8 @@
 [![τ-bench](https://img.shields.io/badge/τ--bench-80%25-blueviolet.svg)](#-评测)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
 
+<img src="docs/pipeline-overview.jpg" alt="售后订单智能处理 Agent 全链路：用户提问 → 意图路由 → LLM 规划与确定性校验 → 受控执行 → 订单终态" width="100%">
+
 </div>
 
 ---
@@ -133,8 +135,6 @@
                                             │  写工具注册表（隔离）  │
                                             └─────────────────────┘
 ```
-
-<img src="docs/architecture-flow.svg" alt="售后咨询全链路流程图" width="680">
 
 **数据模型**：`orders` · `conversations` · `conversation_messages` · `plans` · `plan_steps` · `execution_log` · `idempotency_keys` · `policy_rules`
 
