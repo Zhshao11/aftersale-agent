@@ -1,0 +1,65 @@
+{
+  "model": "openai/glm-5.3",
+  "results": [
+    {
+      "task_index": 0,
+      "reward": 1.0,
+      "reason": "ok",
+      "latency": 184.0
+    },
+    {
+      "task_index": 1,
+      "reward": 1.0,
+      "reason": "ok",
+      "latency": 160.3
+    },
+    {
+      "task_index": 2,
+      "reward": 1.0,
+      "reason": "ok",
+      "latency": 172.2
+    },
+    {
+      "task_index": 3,
+      "reward": 1.0,
+      "reason": "ok",
+      "latency": 234.3
+    },
+    {
+      "task_index": 4,
+      "reward": 1.0,
+      "reason": "ok",
+      "latency": 202.8
+    },
+    {
+      "task_index": 5,
+      "reward": 0.0,
+      "reason": "ok",
+      "latency": 257.6
+    },
+    {
+      "task_index": 6,
+      "reward": 0.0,
+      "reason": "ok",
+      "latency": 228.1
+    },
+    {
+      "task_index": 7,
+      "reward": 1.0,
+      "reason": "ok",
+      "latency": 185.9
+    },
+    {
+      "task_index": 8,
+      "reward": 1.0,
+      "reason": "ok",
+      "latency": 170.3
+    },
+    {
+      "task_index": 9,
+      "reward": 1.0,
+      "reason": "ok",
+      "latency": 174.0
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+package com.aftersale.agent;
+
+import com.aftersale.domain.ConversationEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.stereotype.Service;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 编排层入口：意图路由 → 查询路径 / 规划路径。
+ * 安全不变式：无论路由结果如何，LLM 能接触到的工具集永远是 ReadToolBundle；
+ * 写操作只能通过规划路径产生 Plan，经用户确认后由 Executor 执行（D3/D4）。
+ */
+@Service
+public class AgentOrchestrator {
+
+    private static final Logger log = LoggerFactory.getLogger(AgentOrchestrator.class);
+
+    private final IntentRouter intentRouter;
+    private final QueryAgent queryAgent;
+    private final ConversationService conversationService;
+    private final PlanService planService;
+    private final BaselineToolBundle baselineToolBundle;
+    private final LlmPort llmPort;
+    private final AgentPropsProvider props;
+
+    public AgentOrchestrator(IntentRouter intentRouter, QueryAgent queryAgent,
+                             ConversationService conversationService, PlanService planService,
+                             BaselineToolBundle baselineToolBundle, LlmPort llmPort,
+                             AgentPropsProvider props) {
+        this.intentRouter = intentRouter;
+        this.queryAgent = queryAgent;
+        this.conversationService = conversationService;
+        this.planService = planService;
+        this.baselineToolBundle = baselineToolBundle;
+        this.llmPort = llmPort;
+        this.props = props;
+    }
+
+    private static final String REACT_BASELINE_SYSTEM = """
+            你是电商售后客服助手。当前用户身份由系统注入（userId），无需询问身份。
+            你可以查询订单、物流、政策，也可以为用户发起取消/退款/换货操作。
+            写操作工具首次调用会返回"待用户确认"，此时请告知用户已生成操作请求，
+            用户确认后系统会自动执行，你不要重复调用同一写工具。
+            金额使用美元，回答保持简洁中文。
+            """;
+
+    public record ChatResponse(Long conversationId, String intent, String reply,
+                               Map<String, Object> planCard) {}
+
+    public ChatResponse chat(Long conversationId, String userId, String message) {
+        ConversationEntity conv = conversationService.getOrCreate(conversationId, userId);
+        conversationService.append(conv.id, "USER", message);
+        List<Message> history = conversationService.history(conv.id, 6);
+
+        // V0 基线模式：单环 ReAct 直连（读写工具全挂载），无意图路由、无 Plan
+        if (props.reactBaselineMode()) {
+            String reply = llmPort.completeWithTools(REACT_BASELINE_SYSTEM, history, message,
+                    baselineToolBundle,
+                    Map.of("userId", userId, "conversationId", conv.id.toString()));
+            conversationService.append(conv.id, "ASSISTANT", reply);
+            return new ChatResponse(conv.id, "REACT_BASELINE", reply, null);
+        }
+
+        IntentRouter.IntentResult ir = intentRouter.route(message, history);
+        log.info("意图路由: {} -> {} (request={})", message, ir.intent(), ir.normalizedRequest());
+
+        String reply;
+        Map<String, Object> planCard = null;
+
+        if (ir.intent() == IntentRouter.Intent.WRITE) {
+            PlanService.CreatePlanResult pr = planService.createPlan(conv.id, userId, message, history);
+            if (pr.refused()) {
+                reply = pr.refusalMessage();
+            } else {
+                var plan = pr.plan();
+                Map<String, Object> card = new LinkedHashMap<>();
+                card.put("planId", plan.id);
+                card.put("orderNo", plan.orderNo);
+                card.put("summary", plan.summary);
+                card.put("estimatedAmount", plan.estimatedAmountCents == null ? null
+                        : "$" + plan.estimatedAmountCents / 100.0);
+                card.put("secondConfirmRequired", plan.secondConfirmRequired);
+                card.put("status", plan.status);
+                planCard = card;
+                reply = "已生成执行计划：" + plan.summary
+                        + (plan.secondConfirmRequired
+                        ? "（金额 ≥ $" + 500 + "，确认后需二次确认）" : "")
+                        + "。请确认后执行，如需修改请直接告诉我。";
+            }
+        } else {
+            reply = queryAgent.answer(userId, message, history);
+        }
+
+        conversationService.append(conv.id, "ASSISTANT", reply);
+        return new ChatResponse(conv.id, ir.intent().name(), reply, planCard);
+    }
+}

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>售后订单智能处理 Agent · 演示</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --line: #e4e7ec; --text: #1f2329;
+    --sub: #646a73; --primary: #3370ff; --primary-weak: #e8f0ff;
+    --danger: #d54941; --success: #00b42a; --warn: #ff7d00;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); height: 100vh; overflow: hidden;
+  }
+  #app { display: flex; flex-direction: column; height: 100vh; max-width: 860px; margin: 0 auto; }
+  header {
+    padding: 14px 20px; background: var(--card); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header h1 { font-size: 17px; font-weight: 600; }
+  header .badges { display: flex; gap: 6px; }
+  .badge {
+    font-size: 11px; padding: 3px 8px; border-radius: 999px;
+    background: var(--primary-weak); color: var(--primary); font-weight: 500;
+  }
+  .badge.gray { background: #f2f3f5; color: var(--sub); }
+  #userIdBar { display: flex; gap: 8px; padding: 10px 20px; align-items: center; background: var(--card); border-bottom: 1px solid var(--line); font-size: 13px; }
+  #userIdBar label { color: var(--sub); }
+  #userId { border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-size: 13px; width: 90px; }
+  #userId:focus { outline: none; border-color: var(--primary); }
+  #conversationId { color: var(--sub); font-size: 12px; margin-left: auto; }
+  #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .msg { display: flex; flex-direction: column; max-width: 92%; }
+  .msg.user { align-self: flex-end; align-items: flex-end; }
+  .msg.assistant { align-self: flex-start; align-items: flex-start; }
+  .bubble {
+    padding: 10px 14px; border-radius: var(--radius); line-height: 1.65; font-size: 14px;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .msg.user .bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+  .msg.assistant .bubble { background: var(--card); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .msg .meta { font-size: 11px; color: var(--sub); margin-top: 4px; display: flex; gap: 6px; }
+  .intent-tag {
+    font-size: 10px; padding: 1px 7px; border-radius: 999px; font-weight: 600;
+  }
+  .intent-tag.QUERY { background: #e8ffea; color: var(--success); }
+  .intent-tag.WRITE { background: #fff7e8; color: var(--warn); }
+  .intent-tag.REACT_BASELINE { background: #f2f3f5; color: var(--sub); }
+  .plan-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px 16px; margin-top: 8px; width: 100%;
+  }
+  .plan-card h3 { font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .plan-card .row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+  .plan-card .row:last-of-type { border-bottom: none; }
+  .plan-card .row .k { color: var(--sub); }
+  .plan-card .status {
+    font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+  }
+  .status.PENDING_CONFIRM { background: #fff7e8; color: var(--warn); }
+  .status.AWAITING_SECOND_CONFIRM { background: #ffefe8; color: var(--danger); }
+  .status.CONFIRMED { background: #e8ffea; color: var(--success); }
+  .status.EXECUTING { background: #e8f0ff; color: var(--primary); }
+  .status.COMPLETED { background: #e8ffea; color: var(--success); }
+  .status.EXPIRED { background: #f2f3f5; color: var(--sub); }
+  .status.CLOSED { background: #f2f3f5; color: var(--sub); }
+  .plan-card .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .btn {
+    border: none; border-radius: 8px; padding: 7px 16px; font-size: 13px; cursor: pointer;
+    font-weight: 500; transition: filter .15s;
+  }
+  .btn:hover { filter: brightness(1.05); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.primary { background: var(--primary); color: #fff; }
+  .btn.danger { background: var(--danger); color: #fff; }
+  .btn.ghost { background: #f2f3f5; color: var(--text); }
+  .btn.success { background: var(--success); color: #fff; }
+  .exec-result {
+    margin-top: 8px; font-size: 12px; background: #f8f9fb; border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 12px; color: var(--sub); line-height: 1.6;
+  }
+  #inputBar {
+    padding: 12px 20px; background: var(--card); border-top: 1px solid var(--line);
+    display: flex; gap: 10px; align-items: flex-end;
+  }
+  #input { flex: 1; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-size: 14px; resize: none; min-height: 42px; max-height: 120px; font-family: inherit; }
+  #input:focus { outline: none; border-color: var(--primary); }
+  #send { background: var(--primary); color: #fff; border: none; border-radius: 10px; padding: 10px 22px; font-size: 14px; cursor: pointer; font-weight: 500; }
+  #send:disabled { opacity: .6; cursor: not-allowed; }
+  .typing { color: var(--sub); font-size: 12px; padding: 2px 4px; }
+  .examples { display: flex; gap: 8px; padding: 0 20px 10px; flex-wrap: wrap; }
+  .chip {
+    font-size: 12px; color: var(--primary); background: var(--primary-weak);
+    border-radius: 999px; padding: 4px 12px; cursor: pointer; border: none;
+  }
+  .chip:hover { filter: brightness(.97); }
+  .toast {
+    position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+    background: #333; color: #fff; padding: 8px 18px; border-radius: 8px; font-size: 13px;
+    opacity: 0; transition: opacity .3s; z-index: 99; pointer-events: none;
+  }
+  .toast.show { opacity: .95; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>售后订单智能处理 Agent</h1>
+    <div class="badges">
+      <span class="badge" id="modeBadge">V2 完整版</span>
+      <span class="badge gray">Plan-and-Execute</span>
+    </div>
+  </header>
+  <div id="userIdBar">
+    <label for="userId">用户</label>
+    <input id="userId" value="U001" spellcheck="false">
+    <span class="badge gray">越权演示用 U002</span>
+    <span id="conversationId"></span>
+  </div>
+  <div class="examples">
+    <button class="chip" data-tpl="帮我查一下订单 ORD20260901001 的物流">查物流</button>
+    <button class="chip" data-tpl="退款政策是什么？">问政策</button>
+    <button class="chip" data-tpl="帮我取消订单 ORD20260901001，我不想要了">取消订单</button>
+    <button class="chip" data-tpl="订单 ORD20260910003 手机有问题，我要退款">退款</button>
+    <button class="chip" data-tpl="订单 ORD202609160012 耳机戴着不舒服，给我换一个新的">换货</button>
+    <button class="chip" data-tpl="帮我取消订单 ORD202609060006">越权取消</button>
+    <button class="chip" data-tpl="帮我取消订单 ORD202609150011，太贵了">$1599 高额</button>
+  </div>
+  <div id="messages"></div>
+  <div id="inputBar">
+    <textarea id="input" placeholder="输入您的售后诉求，回车发送（Shift+Enter 换行）"></textarea>
+    <button id="send">发送</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const messages = $('messages'), input = $('input'), send = $('send');
+  let convId = null, busy = false;
+
+  // ---------- 工具函数 ----------
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+  function esc(s) {
+    return String(s || '').replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  async function api(method, path, body) {
+    const opt = { method, headers: {} };
+    if (body !== undefined) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
+    const r = await fetch(path, opt);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok && !data.status && !data.message) toast('请求失败 HTTP ' + r.status);
+    return data;
+  }
+  function scrollBottom() { messages.scrollTop = messages.scrollHeight; }
+
+  function addMsg(role, text, intent) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + role;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    if (intent) {
+      const tag = document.createElement('span');
+      tag.className = 'intent-tag ' + intent;
+      tag.textContent = intent === 'REACT_BASELINE' ? 'BASELINE' : intent;
+      meta.appendChild(tag);
+    }
+    const t = document.createElement('span');
+    t.textContent = role === 'user' ? '我' : 'Agent';
+    meta.appendChild(t);
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    div.appendChild(bubble); div.appendChild(meta);
+    messages.appendChild(div); scrollBottom();
+    return div;
+  }
+
+  function addPlanCard(card) {
+    const container = document.createElement('div');
+    container.className = 'plan-card';
+    container.id = 'plan-' + card.planId;
+
+    const statusMap = {
+      PENDING_CONFIRM: '待确认', AWAITING_SECOND_CONFIRM: '待二次确认', CONFIRMED: '已确认',
+      EXECUTING: '执行中', COMPLETED: '已完成', EXPIRED: '已失效', CLOSED: '已关闭', FAILED: '失败'
+    };
+    const head = document.createElement('h3');
+    head.innerHTML = '📋 执行计划 <span class="status ' + esc(card.status) + '">' + esc(statusMap[card.status] || card.status) + '</span>';
+    container.appendChild(head);
+
+    const rows = [
+      ['计划 ID', '#' + card.planId],
+      ['订单号', card.orderNo],
+      ['操作摘要', card.summary],
+      ['预估金额', card.estimatedAmount || '—'],
+      ['二次确认', card.secondConfirmRequired ? '✅ 是（≥$500）' : '否']
+    ];
+    rows.forEach(([k, v]) => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = '<span class="k">' + esc(k) + '</span><span>' + esc(v) + '</span>';
+      container.appendChild(row);
+    });
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.innerHTML =
+      '<button class="btn primary" data-act="confirm">确认</button>' +
+      '<button class="btn ghost" data-act="reject">拒绝</button>' +
+      '<button class="btn success" data-act="execute">执行</button>' +
+      '<button class="btn ghost" data-act="refresh">刷新状态</button>';
+    container.appendChild(actions);
+
+    const result = document.createElement('div');
+    result.className = 'exec-result';
+    result.style.display = 'none';
+    container.appendChild(result);
+
+    actions.addEventListener('click', async (e) => {
+      const act = e.target.dataset.act;
+      if (!act) return;
+      const uid = $('userId').value.trim() || 'U001';
+      result.style.display = 'block';
+      result.innerHTML = '处理中…';
+      try {
+        if (act === 'refresh') {
+          const v = await api('GET', '/api/plan/' + card.planId + '?userId=' + encodeURIComponent(uid));
+          renderPlan(v, container, result);
+        } else if (act === 'execute') {
+          const r = await api('POST', '/api/plan/' + card.planId + '/execute?userId=' + encodeURIComponent(uid));
+          result.innerHTML = '⚙️ 执行结果：' + esc(r.message) + '<br>计划状态：' + esc(r.planStatus)
+            + '（步骤 ' + (r.stepsDone || 0) + '/' + (r.stepsTotal || 0) + '）';
+          refreshCardStatus(card.planId);
+        } else {
+          const path = act === 'confirm' ? 'confirm' : 'reject';
+          const r = await api('POST', '/api/plan/' + card.planId + '/' + path + '?userId=' + encodeURIComponent(uid));
+          result.innerHTML = esc(r.message) + (r.status === 'AWAITING_SECOND_CONFIRM'
+            ? '<br>🔒 请再次点击「确认」完成二次确认' : '');
+          if (r.status === 'CONFIRMED') result.innerHTML += '<br>✅ 计划已确认，可以执行';
+          refreshCardStatus(card.planId);
+        }
+      } catch (err) {
+        result.innerHTML = '❌ ' + esc(err.message);
+      }
+      scrollBottom();
+    });
+
+    messages.appendChild(container); scrollBottom();
+  }
+
+  async function refreshCardStatus(planId) {
+    const el = document.getElementById('plan-' + planId);
+    if (!el) return;
+    const uid = $('userId').value.trim() || 'U001';
+    const v = await api('GET', '/api/plan/' + planId + '?userId=' + encodeURIComponent(uid));
+    if (v && v.id) renderPlan(v, el, el.querySelector('.exec-result'));
+  }
+
+  function renderPlan(v, container, result) {
+    const statusMap = { PENDING_CONFIRM: '待确认', AWAITING_SECOND_CONFIRM: '待二次确认', CONFIRMED: '已确认', EXECUTING: '执行中', COMPLETED: '已完成', EXPIRED: '已失效', CLOSED: '已关闭', FAILED: '失败' };
+    const st = container.querySelector('.status');
+    if (st) { st.className = 'status ' + esc(v.status); st.textContent = statusMap[v.status] || v.status; }
+    if (result && v.status) result.innerHTML = '状态更新：' + (statusMap[v.status] || v.status);
+  }
+
+  async function sendMessage() {
+    const text = input.value.trim();
+    if (!text || busy) return;
+    const uid = $('userId').value.trim() || 'U001';
+    busy = true; send.disabled = true;
+    addMsg('user', text);
+    input.value = '';
+
+    const typing = document.createElement('div');
+    typing.className = 'typing';
+    typing.textContent = 'Agent 思考中…';
+    messages.appendChild(typing); scrollBottom();
+
+    try {
+      const r = await api('POST', '/api/chat', { userId: uid, message: text, conversationId: convId });
+      if (r.conversationId) { convId = r.conversationId; $('conversationId').textContent = '会话 #' + convId; }
+      typing.remove();
+      addMsg('assistant', r.reply || '（无回复）', r.intent);
+      if (r.planCard) addPlanCard(r.planCard);
+    } catch (err) {
+      typing.remove();
+      addMsg('assistant', '请求出错：' + err.message);
+    } finally {
+      busy = false; send.disabled = false; input.focus();
+    }
+  }
+
+  send.addEventListener('click', sendMessage);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  document.querySelectorAll('.chip').forEach(ch => {
+    ch.addEventListener('click', () => { input.value = ch.dataset.tpl; input.focus(); });
+  });
+  input.focus();
+
+  // 启动时打招呼
+  addMsg('assistant',
+    '您好，我是售后订单处理 Agent 👋\n\n您可以问我订单/物流/政策，也可以让我办理取消、退款、换货。\n' +
+    '写操作会先生成执行计划、经您确认后才执行（≥$500 需二次确认）。\n\n' +
+    '提示：用 U002 可演示越权拦截。', 'QUERY');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: aftersale-agent
+  datasource:
+    url: jdbc:mysql://localhost:3306/aftersale?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: root123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+  ai:
+    openai:
+      base-url: ${LLM_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
+      api-key: ${LLM_API_KEY:dummy-key-not-set}
+      chat:
+        options:
+          model: ${LLM_MODEL:qwen-plus}
+          temperature: 0.1
+
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+aftersale:
+  # 金额二次确认阈值（美分），$500 字面保留
+  confirm-threshold-cents: 50000
+  llm:
+    base-url: ${LLM_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+    api-key: ${LLM_API_KEY:}
+    model: ${LLM_MODEL:qwen-plus}
+  agent:
+    # 消融开关：no-confirm / no-idempotency / no-timeout-classify（默认全关）
+    disable-confirm-gate: false
+    disable-idempotency: false
+    disable-timeout-classify: false
+    # ReAct 基线模式（保留工程能力，仅消融 Plan-and-Execute）
+    react-baseline-mode: false

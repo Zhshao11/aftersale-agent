@@ -1,0 +1,13 @@
+package com.aftersale.enums;
+
+/** Plan 生命周期状态机：PENDING_CONFIRM → (AWAITING_SECOND_CONFIRM) → CONFIRMED → EXECUTING → COMPLETED/FAILED；终态另有 CLOSED（用户拒绝）、EXPIRED（指纹失效） */
+public enum PlanStatus {
+    PENDING_CONFIRM,
+    AWAITING_SECOND_CONFIRM,
+    CONFIRMED,
+    EXECUTING,
+    COMPLETED,
+    FAILED,
+    CLOSED,
+    EXPIRED
+}

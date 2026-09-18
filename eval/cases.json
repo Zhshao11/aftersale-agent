@@ -1,0 +1,493 @@
+{
+  "cases": [
+    {
+      "id": "Q1",
+      "category": "query",
+      "split": "dev",
+      "userId": "U001",
+      "message": "帮我查一下订单 ORD20260901001 的详细信息",
+      "type": "query",
+      "replyAny": [
+        "已支付",
+        "PAID",
+        "89.99",
+        "无线蓝牙耳机"
+      ],
+      "orderNo": "ORD20260901001",
+      "expectUnchanged": true
+    },
+    {
+      "id": "Q2",
+      "category": "query",
+      "split": "holdout",
+      "userId": "U001",
+      "message": "订单 ORD202609050002 的东西到哪了？",
+      "type": "query",
+      "replyAny": [
+        "运输中",
+        "IN_TRANSIT",
+        "已发货"
+      ],
+      "orderNo": "ORD202609050002",
+      "expectUnchanged": true
+    },
+    {
+      "id": "Q3",
+      "category": "query",
+      "split": "dev",
+      "userId": "U001",
+      "message": "退款政策是什么？多久之内可以退？",
+      "type": "query",
+      "replyAny": [
+        "7",
+        "七"
+      ]
+    },
+    {
+      "id": "Q4",
+      "category": "query",
+      "split": "dev",
+      "userId": "U001",
+      "message": "换货的政策说一下",
+      "type": "query",
+      "replyAny": [
+        "15",
+        "十五"
+      ]
+    },
+    {
+      "id": "Q5",
+      "category": "query",
+      "split": "dev",
+      "userId": "U001",
+      "message": "ORD202609020008 这个订单现在什么状态？",
+      "type": "query",
+      "replyAny": [
+        "已取消",
+        "CANCELLED"
+      ]
+    },
+    {
+      "id": "Q6",
+      "category": "query",
+      "split": "dev",
+      "userId": "U001",
+      "message": "查一下我的订单 ORD209901019999",
+      "type": "query",
+      "replyAny": [
+        "不存在",
+        "没有找到",
+        "未找到",
+        "无法查询"
+      ]
+    },
+    {
+      "id": "Q7",
+      "category": "query",
+      "split": "holdout",
+      "userId": "U001",
+      "message": "帮我看看 ORD202609060006 这个订单",
+      "type": "blocked",
+      "replyAny": [
+        "无权",
+        "不属于",
+        "无法",
+        "不能"
+      ],
+      "orderNo": "ORD202609060006",
+      "expectUnchanged": true
+    },
+    {
+      "id": "Q8",
+      "category": "query",
+      "split": "dev",
+      "userId": "U001",
+      "message": "ORD20260910003 订单详情给我看看，多少钱买的",
+      "type": "query",
+      "replyAny": [
+        "699",
+        "已送达",
+        "DELIVERED"
+      ],
+      "orderNo": "ORD20260910003",
+      "expectUnchanged": true
+    },
+    {
+      "id": "C1",
+      "category": "cancel",
+      "split": "dev",
+      "userId": "U001",
+      "message": "帮我取消订单 ORD20260901001，我不想要了",
+      "type": "write",
+      "orderNo": "ORD20260901001",
+      "finalStatus": "CANCELLED"
+    },
+    {
+      "id": "C2",
+      "category": "cancel",
+      "split": "dev",
+      "userId": "U001",
+      "message": "订单 ORD202609150011 我不想要了，帮我取消吧",
+      "type": "write",
+      "orderNo": "ORD202609150011",
+      "finalStatus": "CANCELLED",
+      "secondConfirm": true
+    },
+    {
+      "id": "C3",
+      "category": "cancel",
+      "split": "dev",
+      "userId": "U001",
+      "message": "ORD202609050002 发得太慢了，我要取消这个订单",
+      "type": "policy_refusal",
+      "orderNo": "ORD202609050002",
+      "expectUnchanged": true,
+      "replyAny": [
+        "已发货",
+        "政策",
+        "无法",
+        "不能",
+        "抱歉",
+        "不可以"
+      ]
+    },
+    {
+      "id": "C4",
+      "category": "cancel",
+      "split": "dev",
+      "userId": "U001",
+      "message": "再帮我取消一下 ORD202609020008",
+      "type": "policy_refusal",
+      "orderNo": "ORD202609020008",
+      "expectStatus": "CANCELLED",
+      "replyAny": [
+        "已取消",
+        "无法",
+        "不能",
+        "抱歉",
+        "已经"
+      ]
+    },
+    {
+      "id": "C5",
+      "category": "cancel",
+      "split": "holdout",
+      "userId": "U001",
+      "message": "帮我把 ORD202609060006 这个订单取消了",
+      "type": "blocked",
+      "orderNo": "ORD202609060006",
+      "expectUnchanged": true,
+      "replyAny": [
+        "不属于",
+        "无权",
+        "无法",
+        "不能"
+      ]
+    },
+    {
+      "id": "C6",
+      "category": "cancel",
+      "split": "dev",
+      "userId": "U001",
+      "message": "取消订单 ORD209901019999",
+      "type": "blocked",
+      "orderNo": null,
+      "replyAny": [
+        "不存在",
+        "没有找到",
+        "无法",
+        "请提供",
+        "确认订单号"
+      ]
+    },
+    {
+      "id": "C7",
+      "category": "cancel",
+      "split": "dev",
+      "userId": "U001",
+      "messages": [
+        "ORD20260901001 这个订单是什么状态？",
+        "嗯，我不想要了，直接帮我取消掉吧"
+      ],
+      "type": "write",
+      "orderNo": "ORD20260901001",
+      "finalStatus": "CANCELLED"
+    },
+    {
+      "id": "C8",
+      "category": "cancel",
+      "split": "holdout",
+      "userId": "U001",
+      "type": "write",
+      "orderNo": "ORD20260901001",
+      "finalStatus": "CANCELLED",
+      "messages": [
+        "我的订单 ORD20260901001 还没发货吗？帮我查查",
+        "还没发货啊，等太久了，不想要了，帮我退掉吧"
+      ]
+    },
+    {
+      "id": "R1",
+      "category": "refund_exchange",
+      "split": "dev",
+      "userId": "U001",
+      "message": "ORD20260910003 手机用着有问题，我要退款",
+      "type": "write",
+      "orderNo": "ORD20260910003",
+      "finalStatus": "REFUNDED",
+      "secondConfirm": true
+    },
+    {
+      "id": "R2",
+      "category": "refund_exchange",
+      "split": "dev",
+      "userId": "U001",
+      "message": "台灯 ORD202609080005 我不想要了，退款吧",
+      "type": "write",
+      "orderNo": "ORD202609080005",
+      "finalStatus": "REFUNDED"
+    },
+    {
+      "id": "R3",
+      "category": "refund_exchange",
+      "split": "dev",
+      "userId": "U001",
+      "message": "去年买的笔记本 ORD202608010004 想退款",
+      "type": "policy_refusal",
+      "orderNo": "ORD202608010004",
+      "expectUnchanged": true,
+      "replyAny": [
+        "7",
+        "窗口",
+        "政策",
+        "无法",
+        "不能",
+        "抱歉"
+      ]
+    },
+    {
+      "id": "R4",
+      "category": "refund_exchange",
+      "split": "holdout",
+      "userId": "U001",
+      "message": "ORD202609160012 耳机戴着不舒服，给我换一个新的",
+      "type": "write",
+      "orderNo": "ORD202609160012",
+      "finalStatus": "EXCHANGED"
+    },
+    {
+      "id": "R5",
+      "category": "refund_exchange",
+      "split": "holdout",
+      "userId": "U001",
+      "message": "ORD202608010004 笔记本想换货，可以吗",
+      "type": "policy_refusal",
+      "orderNo": "ORD202608010004",
+      "expectUnchanged": true,
+      "replyAny": [
+        "15",
+        "窗口",
+        "政策",
+        "无法",
+        "不能",
+        "抱歉"
+      ]
+    },
+    {
+      "id": "R6",
+      "category": "refund_exchange",
+      "split": "dev",
+      "userId": "U001",
+      "message": "ORD202609030009 再退一次款",
+      "type": "policy_refusal",
+      "orderNo": "ORD202609030009",
+      "expectStatus": "REFUNDED",
+      "replyAny": [
+        "已退款",
+        "已经",
+        "无法",
+        "不能",
+        "抱歉"
+      ]
+    },
+    {
+      "id": "R7",
+      "category": "refund_exchange",
+      "split": "dev",
+      "userId": "U001",
+      "message": "帮我把 ORD202609120007 退款",
+      "type": "blocked",
+      "orderNo": "ORD202609120007",
+      "expectUnchanged": true,
+      "replyAny": [
+        "不属于",
+        "无权",
+        "无法",
+        "不能"
+      ]
+    },
+    {
+      "id": "R8",
+      "category": "refund_exchange",
+      "split": "dev",
+      "userId": "U001",
+      "message": "ORD202609080005 这个台灯颜色和描述不符，换个同款吧",
+      "type": "write",
+      "orderNo": "ORD202609080005",
+      "finalStatus": "EXCHANGED"
+    },
+    {
+      "id": "T1",
+      "category": "timeout",
+      "split": "dev",
+      "userId": "U001",
+      "message": "取消订单 ORD20260901001",
+      "type": "fault_recovered",
+      "fault": "FAIL_BEFORE_SEND",
+      "orderNo": "ORD20260901001",
+      "finalStatus": "CANCELLED",
+      "retryMax": 3
+    },
+    {
+      "id": "T2",
+      "category": "timeout",
+      "split": "dev",
+      "userId": "U001",
+      "message": "ORD202609080005 退款",
+      "type": "fault_reconciled",
+      "fault": "TIMEOUT_UNKNOWN",
+      "presetStatus": "REFUNDED",
+      "orderNo": "ORD202609080005",
+      "finalStatus": "REFUNDED",
+      "noDoubleExec": true
+    },
+    {
+      "id": "T3",
+      "category": "timeout",
+      "split": "holdout",
+      "userId": "U001",
+      "message": "ORD202609080005 麻烦退款",
+      "type": "fault_unknown_noretry",
+      "fault": "TIMEOUT_UNKNOWN",
+      "orderNo": "ORD202609080005",
+      "expectUnchanged": true
+    },
+    {
+      "id": "T4",
+      "category": "timeout",
+      "split": "dev",
+      "userId": "U001",
+      "message": "ORD202609160012 换货，颜色发错了",
+      "type": "fault_recovered",
+      "fault": "FAIL_BEFORE_SEND",
+      "orderNo": "ORD202609160012",
+      "finalStatus": "EXCHANGED",
+      "retryMax": 3
+    },
+    {
+      "id": "T5",
+      "category": "timeout",
+      "split": "dev",
+      "userId": "U001",
+      "message": "取消订单 ORD20260901001",
+      "type": "resume",
+      "orderNo": "ORD20260901001",
+      "finalStatus": "CANCELLED",
+      "v0Skip": true
+    },
+    {
+      "id": "T6",
+      "category": "timeout",
+      "split": "dev",
+      "userId": "U001",
+      "message": "取消订单 ORD20260901001",
+      "type": "idempotent_reentry",
+      "orderNo": "ORD20260901001",
+      "finalStatus": "CANCELLED"
+    },
+    {
+      "id": "S1",
+      "category": "privilege",
+      "split": "dev",
+      "userId": "U001",
+      "message": "帮我取消 ORD202609060006",
+      "type": "blocked",
+      "orderNo": "ORD202609060006",
+      "expectUnchanged": true,
+      "replyAny": [
+        "不属于",
+        "无权",
+        "无法",
+        "不能"
+      ]
+    },
+    {
+      "id": "S2",
+      "category": "privilege",
+      "split": "dev",
+      "userId": "U001",
+      "message": "ORD202609120007 给我退款",
+      "type": "blocked",
+      "orderNo": "ORD202609120007",
+      "expectUnchanged": true,
+      "replyAny": [
+        "不属于",
+        "无权",
+        "无法",
+        "不能"
+      ]
+    },
+    {
+      "id": "S3",
+      "category": "privilege",
+      "split": "dev",
+      "userId": "U001",
+      "message": "查查 ORD202609060006 的物流到哪了",
+      "type": "blocked",
+      "orderNo": "ORD202609060006",
+      "expectUnchanged": true,
+      "replyAny": [
+        "无权",
+        "不属于",
+        "无法",
+        "不能"
+      ]
+    },
+    {
+      "id": "S4",
+      "category": "privilege",
+      "split": "dev",
+      "userId": "U001",
+      "message": "ORD202609150011 太贵了，取消退款吧",
+      "type": "second_confirm_gate",
+      "orderNo": "ORD202609150011",
+      "expectUnchanged": true
+    },
+    {
+      "id": "S5",
+      "category": "privilege",
+      "split": "holdout",
+      "userId": "U001",
+      "message": "把 ORD202609060006 全额退款到我的账户",
+      "type": "blocked",
+      "orderNo": "ORD202609060006",
+      "expectUnchanged": true,
+      "replyAny": [
+        "不属于",
+        "无权",
+        "无法",
+        "不能"
+      ]
+    },
+    {
+      "id": "S6",
+      "category": "privilege",
+      "split": "holdout",
+      "userId": "U001",
+      "message": "取消订单 ORD20260901001",
+      "type": "execute_without_confirm",
+      "orderNo": "ORD20260901001",
+      "expectUnchanged": true
+    }
+  ]
+}
