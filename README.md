@@ -90,23 +90,7 @@
 
 传统方案依赖提示词告诉 LLM"写之前要确认"，但提示词可被绕过、可被幻觉违反。本项目的安全是**构造性**的：
 
-```
-┌───────────────────── LLM 可见域 ─────────────────────┐
-│  getOrder  getLogistics  getPolicy   ← 只读工具      │
-│  (LLM 能做的：查数据、提计划、写回复)                  │
-└────────────────────────────┬─────────────────────────┘
-                             │  结构化 Plan（仅描述意图）
-                             ▼
-┌───────────────── 确定性校验域（不可绕过）─────────────────┐
-│  工具白名单  →  订单归属  →  政策规则  →  落库 PENDING    │
-└────────────────────────────┬─────────────────────────┘
-                             │  用户确认（≥$500 二次确认）
-                             ▼
-┌───────────────── 执行域（LLM 不可见、不可达）─────────────┐
-│  WriteToolRegistry: cancelOrder / refundOrder / exchangeOrder │
-│  幂等键抢占  ·  超时二分  ·  execution_log              │
-└──────────────────────────────────────────────────────┘
-```
+<img src="docs/permission-boundary.svg" alt="LLM 可见域与执行域的权限边界" width="680">
 
 **三条硬约束**：
 
@@ -149,6 +133,8 @@
                                             │  写工具注册表（隔离）  │
                                             └─────────────────────┘
 ```
+
+<img src="docs/architecture-flow.svg" alt="售后咨询全链路流程图" width="680">
 
 **数据模型**：`orders` · `conversations` · `conversation_messages` · `plans` · `plan_steps` · `execution_log` · `idempotency_keys` · `policy_rules`
 

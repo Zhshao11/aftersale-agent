@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 484" width="680" height="484" role="img" aria-labelledby="pb-title pb-desc">
+<title id="pb-title">LLM 与执行域的权限边界</title>
+<desc id="pb-desc">左侧为 LLM 可见域，仅包含 getOrder、getLogistics、getPolicy 三个只读工具以及生成结构化计划和组织回复的能力；右侧为执行域，包含 cancelOrder、refundOrder、exchangeOrder 三个写工具以及幂等键写入和订单状态变更。两者之间是物理隔离边界，LLM 全程不接触写工具。</desc>
+<style>
+text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.dom-info{fill:#EFF6FF;stroke:#BFDBFE}
+.dom-ok{fill:#DCFCE7;stroke:#86EFAC}
+.tx-info{fill:#1E3A8A}
+.tx-ok{fill:#166534}
+.t1{fill:#1E293B}
+.t2{fill:#64748B}
+.edge{stroke:#94A3B8}
+.sum{fill:#F1F5F9;stroke:#CBD5E1}
+@media (prefers-color-scheme:dark){
+.dom-info{fill:#1E3A8A;stroke:#3B82F6}
+.dom-ok{fill:#14532D;stroke:#22C55E}
+.tx-info{fill:#BFDBFE}
+.tx-ok{fill:#BBF7D0}
+.t1{fill:#F1F5F9}
+.t2{fill:#94A3B8}
+.sum{fill:#1E293B;stroke:#475569}
+}
+</style>
+
+<rect class="dom-info" x="40" y="88" width="250" height="300" rx="12" stroke-width="0.5"/>
+<text class="tx-info" x="62" y="112" font-size="13" font-weight="500" dominant-baseline="central">LLM 可见域</text>
+<text class="tx-info" x="62" y="136" font-size="12" dominant-baseline="central">3 个只读工具</text>
+<line class="edge" x1="62" y1="154" x2="268" y2="154" stroke-width="0.5"/>
+<text class="t1 mono" x="62" y="178" font-size="13" font-weight="500" dominant-baseline="central">getOrder</text>
+<text class="t2" x="62" y="196" font-size="12" dominant-baseline="central">查询订单详情</text>
+<text class="t1 mono" x="62" y="224" font-size="13" font-weight="500" dominant-baseline="central">getLogistics</text>
+<text class="t2" x="62" y="242" font-size="12" dominant-baseline="central">查询物流状态</text>
+<text class="t1 mono" x="62" y="270" font-size="13" font-weight="500" dominant-baseline="central">getPolicy</text>
+<text class="t2" x="62" y="288" font-size="12" dominant-baseline="central">查询售后政策</text>
+<line class="edge" x1="62" y1="310" x2="268" y2="310" stroke-width="0.5"/>
+<text class="t2" x="62" y="332" font-size="12" dominant-baseline="central">生成结构化计划（不执行）</text>
+<text class="t2" x="62" y="356" font-size="12" dominant-baseline="central">组织自然语言回复</text>
+
+<path class="edge" d="M340 110 V190" fill="none" stroke-width="0.5" stroke-dasharray="4 4"/>
+<text class="t1" x="340" y="214" font-size="13" font-weight="500" text-anchor="middle" dominant-baseline="central">物理</text>
+<text class="t1" x="340" y="236" font-size="13" font-weight="500" text-anchor="middle" dominant-baseline="central">隔离</text>
+<path class="edge" d="M340 262 V362" fill="none" stroke-width="0.5" stroke-dasharray="4 4"/>
+
+<rect class="dom-ok" x="390" y="88" width="250" height="300" rx="12" stroke-width="0.5"/>
+<text class="tx-ok" x="412" y="112" font-size="13" font-weight="500" dominant-baseline="central">执行域</text>
+<text class="tx-ok" x="412" y="136" font-size="12" dominant-baseline="central">3 个写工具 · LLM 不可达</text>
+<line class="edge" x1="412" y1="154" x2="618" y2="154" stroke-width="0.5"/>
+<text class="t1 mono" x="412" y="178" font-size="13" font-weight="500" dominant-baseline="central">cancelOrder</text>
+<text class="t2" x="412" y="196" font-size="12" dominant-baseline="central">取消订单</text>
+<text class="t1 mono" x="412" y="224" font-size="13" font-weight="500" dominant-baseline="central">refundOrder</text>
+<text class="t2" x="412" y="242" font-size="12" dominant-baseline="central">全额退款</text>
+<text class="t1 mono" x="412" y="270" font-size="13" font-weight="500" dominant-baseline="central">exchangeOrder</text>
+<text class="t2" x="412" y="288" font-size="12" dominant-baseline="central">换货</text>
+<line class="edge" x1="412" y1="310" x2="618" y2="310" stroke-width="0.5"/>
+<text class="t2" x="412" y="332" font-size="12" dominant-baseline="central">幂等键写入</text>
+<text class="t2" x="412" y="356" font-size="12" dominant-baseline="central">订单状态变更</text>
+
+<rect class="sum" x="40" y="408" width="600" height="56" rx="12" stroke-width="0.5"/>
+<text class="t1" x="340" y="428" font-size="13" font-weight="500" text-anchor="middle" dominant-baseline="central">写操作 100% 经用户确认后，由确定性代码执行</text>
+<text class="t2" x="340" y="448" font-size="12" text-anchor="middle" dominant-baseline="central">LLM 全程不接触写工具，这是架构保证而非提示词约束</text>
+</svg>
