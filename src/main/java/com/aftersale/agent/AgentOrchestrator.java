@@ -20,6 +20,9 @@ public class AgentOrchestrator {
 
     private static final Logger log = LoggerFactory.getLogger(AgentOrchestrator.class);
 
+    /** 历史窗口：最近 6 轮（12 条消息） */
+    private static final int HISTORY_TURNS = 6;
+
     private final IntentRouter intentRouter;
     private final QueryAgent queryAgent;
     private final ConversationService conversationService;
@@ -49,21 +52,35 @@ public class AgentOrchestrator {
             金额使用美元，回答保持简洁中文。
             """;
 
+    /**
+     * 单次请求的执行元信息。
+     * 把终止原因和 token 用量暴露到响应里，是为了让"这次为什么没答上来"当场可见——
+     * 否则边界触发和正常回答在用户那里长得一样，等于白设了边界。
+     * 基线模式下 termination 固定为 FRAMEWORK_LOOP：那一轮循环跑在框架里，我们量不到。
+     */
+    public record TraceMeta(String traceId, String termination, int steps,
+                            int promptTokens, int completionTokens, long elapsedMs) {}
+
     public record ChatResponse(Long conversationId, String intent, String reply,
-                               Map<String, Object> planCard) {}
+                               Map<String, Object> planCard, TraceMeta trace) {}
 
     public ChatResponse chat(Long conversationId, String userId, String message) {
         ConversationEntity conv = conversationService.getOrCreate(conversationId, userId);
         conversationService.append(conv.id, "USER", message);
-        List<Message> history = conversationService.history(conv.id, 6);
+        List<Message> history = conversationService.history(conv.id, HISTORY_TURNS);
 
-        // V0 基线模式：单环 ReAct 直连（读写工具全挂载），无意图路由、无 Plan
+        // V0 基线模式：单环 ReAct 直连（读写工具全挂载），无意图路由、无 Plan。
+        // 刻意保留框架内部循环——基线要消融的是 Plan-and-Execute，不是循环边界，
+        // 两个变量一起关掉的话，跑出来的差异就归因不清了。
         if (props.reactBaselineMode()) {
+            long baselineStart = System.currentTimeMillis();
             String reply = llmPort.completeWithTools(REACT_BASELINE_SYSTEM, history, message,
                     baselineToolBundle,
                     Map.of("userId", userId, "conversationId", conv.id.toString()));
             conversationService.append(conv.id, "ASSISTANT", reply);
-            return new ChatResponse(conv.id, "REACT_BASELINE", reply, null);
+            return new ChatResponse(conv.id, "REACT_BASELINE", reply, null,
+                    new TraceMeta(null, "FRAMEWORK_LOOP", 0, 0, 0,
+                            System.currentTimeMillis() - baselineStart));
         }
 
         IntentRouter.IntentResult ir = intentRouter.route(message, history);
@@ -71,6 +88,7 @@ public class AgentOrchestrator {
 
         String reply;
         Map<String, Object> planCard = null;
+        TraceMeta trace = null;
 
         if (ir.intent() == IntentRouter.Intent.WRITE) {
             PlanService.CreatePlanResult pr = planService.createPlan(conv.id, userId, message, history);
@@ -89,14 +107,22 @@ public class AgentOrchestrator {
                 planCard = card;
                 reply = "已生成执行计划：" + plan.summary
                         + (plan.secondConfirmRequired
-                        ? "（金额 ≥ $" + 500 + "，确认后需二次确认）" : "")
+                        ? "（金额 ≥ $" + props.confirmThresholdCents() / 100 + "，确认后需二次确认）" : "")
                         + "。请确认后执行，如需修改请直接告诉我。";
             }
         } else {
-            reply = queryAgent.answer(userId, message, history);
+            ReadLoop.ReadOutcome outcome = queryAgent.answer(userId, conv.id, message, history);
+            reply = outcome.reply();
+            trace = new TraceMeta(outcome.traceId(), outcome.termination(), outcome.steps(),
+                    outcome.promptTokens(), outcome.completionTokens(), outcome.elapsedMs());
+            if (outcome.degraded()) {
+                log.warn("只读路径降级 traceId={} termination={} steps={} unsupported={}",
+                        outcome.traceId(), outcome.termination(), outcome.steps(),
+                        outcome.unsupportedOrderNos());
+            }
         }
 
         conversationService.append(conv.id, "ASSISTANT", reply);
-        return new ChatResponse(conv.id, ir.intent().name(), reply, planCard);
+        return new ChatResponse(conv.id, ir.intent().name(), reply, planCard, trace);
     }
 }

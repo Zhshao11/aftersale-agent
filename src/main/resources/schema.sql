@@ -107,3 +107,29 @@ CREATE TABLE IF NOT EXISTS policy_rules (
     enabled        TINYINT(1) NOT NULL DEFAULT 1,
     UNIQUE KEY uk_rule_code (rule_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 只读路径轨迹：一个 trace_id 一条链路，按 step_index 升序即为完整回放
+-- 与 execution_log 分开建表的原因：execution_log 的 plan_id/step_id 是 NOT NULL，
+-- 只读路径没有 Plan，硬塞进去会污染写路径的查询口径（"哪些 plan 执行过"会被只读行干扰）。
+-- 只记录工具调用与可观察决策信息，不存模型思维链。
+CREATE TABLE IF NOT EXISTS agent_trace (
+    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    trace_id       VARCHAR(32)  NOT NULL,
+    conversation_id BIGINT      NULL,
+    user_id        VARCHAR(32)  NOT NULL,
+    node           VARCHAR(16)  NOT NULL COMMENT 'MODEL/TOOL/TERMINAL',
+    step_index     INT          NOT NULL,
+    tool_name      VARCHAR(64)  NULL,
+    args_digest    VARCHAR(255) NULL COMMENT '工具入参摘要，截断后存储',
+    status         VARCHAR(24)  NOT NULL COMMENT 'SUCCESS/FAILED/RETRYING/DUPLICATE_SKIPPED/终止原因',
+    error_code     VARCHAR(64)  NULL,
+    detail         TEXT         NULL,
+    model          VARCHAR(64)  NULL,
+    prompt_tokens  INT          NULL,
+    completion_tokens INT       NULL,
+    latency_ms     BIGINT       NULL,
+    created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_trace (trace_id, step_index),
+    KEY idx_conv (conversation_id),
+    KEY idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

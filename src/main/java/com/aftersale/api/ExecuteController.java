@@ -29,11 +29,26 @@ public class ExecuteController {
         return java.util.Map.of("resumed", n);
     }
 
-    /** 故障注入（仅评测）：POST /api/fault?mode=TIMEOUT_UNKNOWN —— 对下一次工具执行生效一次 */
+    /**
+     * 故障注入（仅评测）：POST /api/fault?mode=TIMEOUT_UNKNOWN —— 对下一次工具执行生效一次。
+     * 定向注入（用于崩溃恢复实验）：POST /api/fault?mode=HANG&planId=1&stepSeq=1&hangMs=60000
+     */
     @PostMapping("/fault")
-    public java.util.Map<String, Object> fault(@RequestParam String mode) {
+    public java.util.Map<String, Object> fault(@RequestParam String mode,
+                                               @RequestParam(required = false) Long planId,
+                                               @RequestParam(required = false) Integer stepSeq,
+                                               @RequestParam(defaultValue = "0") long hangMs) {
         FaultInjector.Mode m = FaultInjector.Mode.valueOf(mode);
-        faultInjector.inject(m);
-        return java.util.Map.of("injected", m.name());
+        if (planId != null || stepSeq != null) {
+            faultInjector.injectAt(planId, stepSeq, m, hangMs);
+        } else {
+            faultInjector.inject(m);
+        }
+        java.util.Map<String, Object> r = new java.util.LinkedHashMap<>();
+        r.put("injected", m.name());
+        r.put("planId", planId);
+        r.put("stepSeq", stepSeq);
+        r.put("hangMs", hangMs);
+        return r;
     }
 }

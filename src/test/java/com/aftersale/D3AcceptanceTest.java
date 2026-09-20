@@ -54,6 +54,18 @@ class D3AcceptanceTest {
                                                 java.util.Map<String, Object> toolContext) {
                     return "stub-reply";
                 }
+                @Override
+                public org.springframework.ai.chat.model.ChatResponse callOnce(
+                        String systemPrompt, List<org.springframework.ai.chat.messages.Message> messages,
+                        Object toolBundle, java.util.Map<String, Object> toolContext) {
+                    // 只读循环的桩：返回一个不含工具调用的终止答复。
+                    // 返回文本而不是抛异常，是为了让 D3/D4 万一走到只读路径时也能正常收尾，
+                    // 不把"只测写路径"的用例变成因桩不全而失败。
+                    var message = org.springframework.ai.chat.messages.AssistantMessage.builder()
+                            .content("stub-reply").build();
+                    return new org.springframework.ai.chat.model.ChatResponse(
+                            java.util.List.of(new org.springframework.ai.chat.model.Generation(message)));
+                }
             };
         }
     }

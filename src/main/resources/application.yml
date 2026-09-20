@@ -50,3 +50,23 @@ aftersale:
     disable-timeout-classify: false
     # ReAct 基线模式（保留工程能力，仅消融 Plan-and-Execute）
     react-baseline-mode: false
+  # 只读 ReAct 循环的硬边界。这些是安全边界，不是实验开关，默认值即生产取值。
+  read:
+    # 单次只读请求最多几步（含模型调用与工具调用）
+    max-steps: 6
+    # 整次只读请求的墙钟上限（毫秒）
+    wall-clock-ms: 30000
+    # 单次请求累计 token 上限（prompt + completion），超限主动停
+    token-budget: 12000
+    # 单次模型调用的墙钟上限（毫秒），防单点挂死
+    call-timeout-ms: 20000
+    # 模型调用失败重试次数（仅限流与瞬态错误）
+    retry-max: 2
+    # 退避基数（毫秒），实际退避 = base * 2^(n-1) + 抖动
+    retry-base-backoff-ms: 500
+    # 单个工具返回的最大字符数，超出则包装成 truncated 预览
+    tool-output-max-chars: 4000
+    # 同参数重复调用累计多少次后主动终止
+    max-repeated-actions: 2
+    # 反幻觉闸门：答复中出现的订单号必须能在本回合事实来源里找到出处
+    fabrication-guard-enabled: true
