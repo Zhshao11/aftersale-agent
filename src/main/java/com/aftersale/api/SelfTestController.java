@@ -8,6 +8,7 @@ import com.aftersale.tools.write.CancelOrderTool;
 import com.aftersale.tools.write.ExchangeOrderTool;
 import com.aftersale.tools.write.RefundOrderTool;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,7 +20,17 @@ import java.util.Map;
 
 /**
  * D1 工具层自测：只读工具 + 写工具（含政策拒绝、越权、不存在订单）全路径验证。
- * 事务整体回滚，不污染种子数据。
+ *
+ * ── 关于"不污染种子数据"这件事 ──
+ * 这个自测会真的调用写工具，所以必须显式把事务标记为回滚。
+ * 注意 @Transactional 的语义是**正常返回即提交**，只有抛出异常才回滚；
+ * `rollbackFor = Exception.class` 只是把回滚范围从 RuntimeException 扩展到受检异常，
+ * 并不会让"正常返回"也回滚。早先这里只有 @Transactional，
+ * 结果每次调用自测都会把订单真的改成 CANCELLED / REFUNDED / EXCHANGED，
+ * 于是"同一份代码、同一份种子数据"的自测结果会从 12/12 变成 9/12，看起来像代码回归。
+ * 显式 setRollbackOnly() 才是这里真正需要的机制。
+ *
+ * 另外：这是一个有副作用的 GET，只因为强制回滚才成立。生产环境不应这样暴露。
  */
 @RestController
 @RequestMapping("/api/selftest")
@@ -81,6 +92,10 @@ public class SelfTestController {
                 cancelOrderTool.cancelOrder("", "U001", "x")));
 
         long passed = cases.stream().filter(c -> (boolean) c.get("pass")).count();
+
+        // 显式回滚：本方法会真的调用写工具，必须撤销其副作用（正常返回不会自动回滚）
+        TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("total", cases.size());
         result.put("passed", passed);
