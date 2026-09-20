@@ -4,6 +4,7 @@ import com.aftersale.tools.ToolResult;
 import com.aftersale.tools.read.GetLogisticsTool;
 import com.aftersale.tools.read.GetOrderTool;
 import com.aftersale.tools.read.GetPolicyTool;
+import com.aftersale.tools.read.ListMyOrdersTool;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
@@ -20,11 +21,27 @@ public class ReadToolBundle {
     private final GetOrderTool getOrderTool;
     private final GetLogisticsTool getLogisticsTool;
     private final GetPolicyTool getPolicyTool;
+    private final ListMyOrdersTool listMyOrdersTool;
 
-    public ReadToolBundle(GetOrderTool getOrderTool, GetLogisticsTool getLogisticsTool, GetPolicyTool getPolicyTool) {
+    public ReadToolBundle(GetOrderTool getOrderTool, GetLogisticsTool getLogisticsTool,
+                          GetPolicyTool getPolicyTool, ListMyOrdersTool listMyOrdersTool) {
         this.getOrderTool = getOrderTool;
         this.getLogisticsTool = getLogisticsTool;
         this.getPolicyTool = getPolicyTool;
+        this.listMyOrdersTool = listMyOrdersTool;
+    }
+
+    @Tool(description = """
+            列出当前用户自己的订单（按时间倒序）。当用户用商品描述指代订单、而没说订单号时，
+            必须先调用这个工具定位订单，不要反问用户要订单号，更不要编造订单号。
+            keyword 可填商品名片段（如「耳机」「咖啡机」）用于缩小范围；不确定商品名时留空，
+            直接看最近的订单。返回的 orders[] 里每条都带 orderNo、下单时间与状态，
+            据此判断用户说的是哪一单，再用 getOrder / getLogistics 查详情。""")
+    public ToolResult listMyOrders(
+            @ToolParam(description = "商品名关键词，如「耳机」「咖啡机」；不确定则留空", required = false) String keyword,
+            @ToolParam(description = "返回条数上限，默认 5，最大 20", required = false) Integer limit,
+            ToolContext ctx) {
+        return listMyOrdersTool.listMyOrders(keyword, limit, userId(ctx));
     }
 
     @Tool(description = "查询订单详情：状态、商品、金额、支付/发货/送达时间。只能查询当前用户自己的订单。")

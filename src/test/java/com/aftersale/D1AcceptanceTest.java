@@ -7,6 +7,7 @@ import com.aftersale.tools.ToolErrorCode;
 import com.aftersale.tools.ToolResult;
 import com.aftersale.tools.read.GetOrderTool;
 import com.aftersale.tools.read.GetPolicyTool;
+import com.aftersale.tools.read.ListMyOrdersTool;
 import com.aftersale.tools.write.CancelOrderTool;
 import com.aftersale.tools.write.ExchangeOrderTool;
 import com.aftersale.tools.write.RefundOrderTool;
@@ -32,6 +33,7 @@ class D1AcceptanceTest {
     @Autowired DataSource dataSource;
     @Autowired GetOrderTool getOrderTool;
     @Autowired GetPolicyTool getPolicyTool;
+    @Autowired ListMyOrdersTool listMyOrdersTool;
     @Autowired CancelOrderTool cancelOrderTool;
     @Autowired RefundOrderTool refundOrderTool;
     @Autowired ExchangeOrderTool exchangeOrderTool;
@@ -66,6 +68,86 @@ class D1AcceptanceTest {
         assertTrue(getPolicyTool.getPolicy("CANCEL").ok());
         assertTrue(getPolicyTool.getPolicy(null).ok());
         assertEquals(ToolErrorCode.INVALID_ARGS, getPolicyTool.getPolicy("FOO").code());
+    }
+
+    // ---------------------------------------------------------------- listMyOrders
+    // 覆盖「用户用商品描述指代订单」这条路径。没有它，查询链路一旦拿不到订单号就无路可走。
+
+    @SuppressWarnings("unchecked")
+    private java.util.List<java.util.Map<String, Object>> ordersOf(ToolResult r) {
+        assertTrue(r.ok(), "应为成功: " + r.message());
+        return (java.util.List<java.util.Map<String, Object>>)
+                ((java.util.Map<String, Object>) r.data()).get("orders");
+    }
+
+    @Test
+    void listMyOrders_returnsOnlyOwnOrdersByTimeDesc() {
+        ToolResult r = listMyOrdersTool.listMyOrders(null, 20, U1);
+        java.util.List<java.util.Map<String, Object>> orders = ordersOf(r);
+
+        // U001 在种子数据里有 10 单（12 条里另外 2 条属 U002）
+        assertEquals(10, orders.size(), "U001 应能列出自己的 10 单");
+
+        // 时间倒序：第一条应是 createdAt 最大者（ORD202609160012，09-16）
+        assertEquals("ORD202609160012", orders.get(0).get("orderNo"), "应按时间倒序，最近的在最前");
+
+        // 越权边界：U002 的订单绝不能出现在 U001 的列表里
+        for (java.util.Map<String, Object> o : orders) {
+            assertNotEquals("ORD202609060006", o.get("orderNo"), "不得看到他人订单");
+            assertNotEquals("ORD202609120007", o.get("orderNo"), "不得看到他人订单");
+        }
+    }
+
+    @Test
+    void listMyOrders_keywordMatchesItemName() {
+        // 「咖啡机」应命中 ORD202609050002（全自动咖啡机）
+        java.util.List<java.util.Map<String, Object>> hit =
+                ordersOf(listMyOrdersTool.listMyOrders("咖啡机", null, U1));
+        assertEquals(1, hit.size(), "「咖啡机」应恰好命中 1 单");
+        assertEquals("ORD202609050002", hit.get(0).get("orderNo"));
+
+        // 「耳机」应命中两单：无线蓝牙耳机 + 降噪头戴耳机
+        java.util.List<java.util.Map<String, Object>> ear =
+                ordersOf(listMyOrdersTool.listMyOrders("耳机", null, U1));
+        assertEquals(2, ear.size(), "「耳机」应命中 2 单（蓝牙耳机 / 头戴耳机）");
+    }
+
+    @Test
+    void listMyOrders_keywordMissFallsBackWithNote() {
+        // 用户口中的商品名常与系统记录不一致，未命中时退回最近订单并附说明，
+        // 而不是返回空让模型误判"用户没有这个订单"
+        ToolResult r = listMyOrdersTool.listMyOrders("电饭煲", null, U1);
+        java.util.List<java.util.Map<String, Object>> orders = ordersOf(r);
+
+        assertFalse(orders.isEmpty(), "未命中应退化为最近订单而非空列表");
+        assertEquals(5, orders.size(), "默认返回 5 条");
+        String note = String.valueOf(((java.util.Map<String, Object>) r.data()).get("note"));
+        assertTrue(note.contains("电饭煲"), "note 应说明是哪个关键词没匹配到");
+        assertTrue(note.contains("没有匹配"), "note 应说明未命中，避免模型误以为就是用户要的那单");
+    }
+
+    @Test
+    void listMyOrders_limitAndArgsBoundary() {
+        // limit 上限 20：即使传 999 也不会把全部历史倒出来
+        assertEquals(10, ordersOf(listMyOrdersTool.listMyOrders(null, 999, U1)).size());
+        // limit 非法值退化为默认 5，而不是让整次查询失败
+        assertEquals(5, ordersOf(listMyOrdersTool.listMyOrders(null, 0, U1)).size());
+        assertEquals(5, ordersOf(listMyOrdersTool.listMyOrders(null, -3, U1)).size());
+        // userId 缺失 → INVALID_ARGS（身份由系统注入，模型无法省略或伪造）
+        assertEquals(ToolErrorCode.INVALID_ARGS, listMyOrdersTool.listMyOrders(null, null, "").code());
+    }
+
+    @Test
+    void listMyOrders_otherUserSeesOwnListOnly() {
+        // 同一工具、不同身份 → 看到的是各自的订单，这是归属校验的构造性体现
+        java.util.List<java.util.Map<String, Object>> u2 =
+                ordersOf(listMyOrdersTool.listMyOrders(null, 20, U2));
+        assertEquals(2, u2.size(), "U002 只应看到自己的 2 单");
+        for (java.util.Map<String, Object> o : u2) {
+            assertTrue(String.valueOf(o.get("orderNo")).equals("ORD202609060006")
+                            || String.valueOf(o.get("orderNo")).equals("ORD202609120007"),
+                    "U002 的列表里只能有自己的订单");
+        }
     }
 
     @Test

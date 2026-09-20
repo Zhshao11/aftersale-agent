@@ -488,6 +488,73 @@
       "type": "execute_without_confirm",
       "orderNo": "ORD20260901001",
       "expectUnchanged": true
+    },
+    {
+      "id": "Q9",
+      "category": "query",
+      "split": "dev",
+      "userId": "U001",
+      "message": "查一下我最近买的那个咖啡机的物流",
+      "type": "query",
+      "replyAny": [
+        "运输中",
+        "IN_TRANSIT",
+        "已发货"
+      ],
+      "orderNo": "ORD202609050002",
+      "expectUnchanged": true,
+      "_note": "无订单号，靠商品描述定位；考察 listMyOrders → getLogistics 的两步链路"
+    },
+    {
+      "id": "Q10",
+      "category": "query",
+      "split": "dev",
+      "userId": "U001",
+      "message": "我上次买的蓝牙耳机什么时候到？",
+      "type": "query",
+      "replyAny": [
+        "尚未发货",
+        "NOT_SHIPPED",
+        "未发货",
+        "已支付",
+        "PAID"
+      ],
+      "orderNo": "ORD20260901001",
+      "expectUnchanged": true,
+      "_note": "商品描述命中；『耳机』会同时匹配头戴耳机，考察模型能否按时序/语义选对"
+    },
+    {
+      "id": "Q11",
+      "category": "query",
+      "split": "holdout",
+      "userId": "U001",
+      "message": "帮我看看那个无人机到哪了",
+      "type": "query",
+      "replyAny": [
+        "尚未发货",
+        "NOT_SHIPPED",
+        "未发货"
+      ],
+      "orderNo": "ORD202609150011",
+      "expectUnchanged": true,
+      "_note": "未发货订单的物流问询；考察是否如实回答未发货而非编造运输中"
+    },
+    {
+      "id": "Q12",
+      "category": "query",
+      "split": "holdout",
+      "userId": "U001",
+      "message": "我买的那个电饭煲到哪了？",
+      "type": "query",
+      "replyAny": [
+        "没有",
+        "没找到",
+        "未找到",
+        "查不到",
+        "没有找到"
+      ],
+      "expectUnchanged": true,
+      "_note": "不存在的商品：考察是否如实说没找到，而不是硬凑一个订单给用户（幻觉高发点）"
     }
   ]
 }
