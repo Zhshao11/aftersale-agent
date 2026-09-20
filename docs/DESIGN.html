@@ -1,0 +1,2546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AfterSale Agent 设计说明书</title>
+<style>
+  :root{
+    --bg:#f7f8fa;
+    --panel:#ffffff;
+    --ink:#1a1d24;
+    --ink2:#3d4450;
+    --ink3:#6b7280;
+    --line:#e3e6ec;
+    --line2:#cbd2dd;
+    --accent:#1e4d6b;
+    --accent-soft:#eef4f8;
+    --teal:#0f766e;
+    --teal-soft:#edf7f5;
+    --amber:#a16207;
+    --amber-soft:#fdf6e7;
+    --rose:#9f1239;
+    --rose-soft:#fdf0f3;
+    --violet:#5b21b6;
+    --violet-soft:#f4f0fd;
+    --code-bg:#f2f4f7;
+    --radius:10px;
+    --shadow:0 1px 2px rgba(16,24,40,.04), 0 4px 12px rgba(16,24,40,.05);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    font-size:15px; line-height:1.78; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:0 24px 96px;}
+
+  /* ---------- 封面 ---------- */
+  header.cover{
+    background:linear-gradient(160deg,#16394f 0%,#1e4d6b 55%,#256d7f 100%);
+    color:#fff; padding:64px 24px 56px; margin-bottom:40px;
+  }
+  header.cover .inner{max-width:980px; margin:0 auto;}
+  header.cover .kicker{
+    font-size:12.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:#a8cbdd; font-weight:600; margin-bottom:18px;
+  }
+  header.cover h1{
+    margin:0 0 14px; font-size:38px; line-height:1.25; font-weight:700; letter-spacing:-.01em;
+  }
+  header.cover .lede{
+    margin:0; font-size:16.5px; color:#d5e6ef; max-width:700px; line-height:1.7;
+  }
+  header.cover .metabar{
+    margin-top:32px; padding-top:22px; border-top:1px solid rgba(255,255,255,.18);
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:16px 28px;
+  }
+  header.cover .metabar div span{
+    display:block; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase;
+    color:#8fb6cb; margin-bottom:3px;
+  }
+  header.cover .metabar div b{font-weight:600; font-size:14px; color:#fff;}
+
+  /* ---------- 目录 ---------- */
+  nav.toc{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:24px 28px; margin-bottom:44px; box-shadow:var(--shadow);
+  }
+  nav.toc h2{
+    margin:0 0 16px; font-size:13px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--ink3); font-weight:600;
+  }
+  nav.toc ol{
+    margin:0; padding:0; list-style:none;
+    columns:2; column-gap:36px;
+  }
+  @media(max-width:700px){ nav.toc ol{columns:1;} }
+  nav.toc li{margin-bottom:9px; break-inside:avoid;}
+  nav.toc a{
+    color:var(--ink2); text-decoration:none; font-size:14px;
+    display:flex; gap:10px; align-items:baseline;
+  }
+  nav.toc a:hover{color:var(--accent);}
+  nav.toc a .n{
+    font-variant-numeric:tabular-nums; color:var(--ink3); font-size:12.5px;
+    min-width:22px; font-weight:600;
+  }
+
+  /* ---------- 章节 ---------- */
+  section{margin-bottom:56px; scroll-margin-top:24px;}
+  h2.sec{
+    font-size:25px; font-weight:700; margin:0 0 6px; letter-spacing:-.01em;
+    display:flex; align-items:baseline; gap:12px;
+  }
+  h2.sec .num{
+    font-size:14px; color:var(--accent); font-weight:700;
+    background:var(--accent-soft); border-radius:6px; padding:3px 9px;
+    font-variant-numeric:tabular-nums; flex:none;
+  }
+  .sec-sub{color:var(--ink3); font-size:14.5px; margin:0 0 26px; line-height:1.7;}
+  h3{font-size:18px; font-weight:650; margin:36px 0 12px; letter-spacing:-.005em;}
+  h4{font-size:15.5px; font-weight:650; margin:24px 0 8px; color:var(--ink);}
+  p{margin:0 0 15px;}
+  ul,ol{margin:0 0 15px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  a{color:var(--accent);}
+
+  /* ---------- 卡片 ---------- */
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px 26px; margin:0 0 22px; box-shadow:var(--shadow);
+  }
+  .card.tight{padding:18px 22px;}
+  .card h4:first-child, .card p:first-child{margin-top:0;}
+  .card p:last-child, .card ul:last-child, .card ol:last-child{margin-bottom:0;}
+
+  .callout{
+    border-radius:var(--radius); padding:16px 20px; margin:0 0 22px;
+    border:1px solid; font-size:14.5px;
+  }
+  .callout p:last-child{margin-bottom:0;}
+  .callout .lbl{
+    display:block; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase;
+    font-weight:700; margin-bottom:7px;
+  }
+  .co-why{background:var(--accent-soft); border-color:#cbe0ec; color:#123448;}
+  .co-why .lbl{color:var(--accent);}
+  .co-key{background:var(--teal-soft); border-color:#c3e4dd; color:#0b3d37;}
+  .co-key .lbl{color:var(--teal);}
+  .co-warn{background:var(--amber-soft); border-color:#edd9a8; color:#5c4308;}
+  .co-warn .lbl{color:var(--amber);}
+  .co-limit{background:var(--rose-soft); border-color:#f0cdd6; color:#651226;}
+  .co-limit .lbl{color:var(--rose);}
+
+  /* ---------- 代码 ---------- */
+  code{
+    background:var(--code-bg); border-radius:4px; padding:1.5px 5.5px;
+    font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    font-size:13px; color:#0f172a; border:1px solid #e6e9ef;
+  }
+  pre{
+    background:#f8f9fb; border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px 18px; overflow-x:auto; margin:0 0 20px; line-height:1.62;
+  }
+  pre code{background:none; border:none; padding:0; font-size:12.8px; color:#1e293b;}
+  .cmt{color:#7a8797;}
+
+  /* ---------- 表格 ---------- */
+  .tbl{overflow-x:auto; margin:0 0 22px;}
+  table{border-collapse:collapse; width:100%; font-size:14px; background:var(--panel);}
+  caption{
+    text-align:left; font-size:13px; color:var(--ink3); padding:0 0 9px; caption-side:top;
+  }
+  th,td{
+    border:1px solid var(--line); padding:9px 13px; text-align:left; vertical-align:top;
+  }
+  th{background:#f4f6f9; font-weight:650; color:var(--ink2); font-size:13.5px;}
+  td code{font-size:12.3px;}
+  tbody tr:nth-child(even) td{background:#fbfcfd;}
+
+  /* ---------- 图示 ---------- */
+  figure{margin:0 0 26px;}
+  figure svg{display:block; width:100%; height:auto;}
+  figcaption{
+    font-size:13px; color:var(--ink3); margin-top:11px; padding-left:2px;
+    line-height:1.65;
+  }
+  .figbox{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px 18px; box-shadow:var(--shadow);
+  }
+
+  /* ---------- 其他 ---------- */
+  .pill{
+    display:inline-block; font-size:11.5px; font-weight:650; padding:2.5px 9px;
+    border-radius:99px; letter-spacing:.02em; white-space:nowrap;
+  }
+  .p-new{background:var(--teal-soft); color:var(--teal); border:1px solid #c3e4dd;}
+  .p-core{background:var(--accent-soft); color:var(--accent); border:1px solid #cbe0ec;}
+  .p-warn{background:var(--amber-soft); color:var(--amber); border:1px solid #edd9a8;}
+  .p-gap{background:var(--rose-soft); color:var(--rose); border:1px solid #f0cdd6;}
+
+  .kv{display:grid; grid-template-columns:150px 1fr; gap:6px 20px; font-size:14px;}
+  .kv dt{color:var(--ink3); font-weight:600;}
+  .kv dd{margin:0;}
+  @media(max-width:620px){ .kv{grid-template-columns:1fr; gap:0 0 14px;} .kv dd{margin-bottom:8px;} }
+
+  hr.div{border:none; border-top:1px solid var(--line); margin:44px 0;}
+  .foot{
+    margin-top:64px; padding-top:26px; border-top:1px solid var(--line);
+    font-size:13px; color:var(--ink3); line-height:1.75;
+  }
+  .anchor-note{
+    font-size:12.5px; color:var(--ink3); background:#f4f6f9;
+    border-left:3px solid var(--line2); padding:8px 14px; border-radius:0 6px 6px 0;
+    margin:0 0 20px;
+  }
+</style>
+</head>
+<body>
+
+<header class="cover">
+  <div class="inner">
+    <div class="kicker">Design Specification · v1.0</div>
+    <h1>AfterSale Agent 设计说明书</h1>
+    <p class="lede">
+      一个把「LLM 执行高风险写操作」从提示词约束升级为架构约束的售后订单智能体。
+      本文说明它<strong>为什么这样设计</strong>，以及这些设计<strong>落在哪些代码上</strong>。
+    </p>
+    <div class="metabar">
+      <div><span>技术栈</span><b>Java 17 · Spring Boot 3.5.16 · Spring AI 1.1.8 · MySQL 8</b></div>
+      <div><span>代码规模</span><b>63 个主源码文件 · 6 个测试类 · 49 个用例</b></div>
+      <div><span>核心范式</span><b>Plan-and-Execute + 自研控制环</b></div>
+      <div><span>文档基准</span><b>2026-09-19 源码</b></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+  <h2>目录</h2>
+  <ol>
+    <li><a href="#s0"><span class="n">0</span><span>先读这页：五分钟看懂整个系统</span></a></li>
+    <li><a href="#s1"><span class="n">1</span><span>问题定义与设计目标</span></a></li>
+    <li><a href="#s2"><span class="n">2</span><span>总体架构</span></a></li>
+    <li><a href="#s3"><span class="n">3</span><span>数据模型</span></a></li>
+    <li><a href="#s4"><span class="n">4</span><span>链路一：查询应答</span></a></li>
+    <li><a href="#s5"><span class="n">5</span><span>链路二：写操作规划与确认</span></a></li>
+    <li><a href="#s6"><span class="n">6</span><span>链路三：受控执行与故障恢复</span></a></li>
+    <li><a href="#s7"><span class="n">7</span><span>核心机制：三条构造性保证</span></a></li>
+    <li><a href="#s8"><span class="n">8</span><span>状态机与事务边界</span></a></li>
+    <li><a href="#s9"><span class="n">9</span><span>接口设计</span></a></li>
+    <li><a href="#s10"><span class="n">10</span><span>配置与可调参数</span></a></li>
+    <li><a href="#s11"><span class="n">11</span><span>工程结构</span></a></li>
+    <li><a href="#s12"><span class="n">12</span><span>正确性如何被验证</span></a></li>
+    <li><a href="#s13"><span class="n">13</span><span>已知边界与设计取舍</span></a></li>
+  </ol>
+</nav>
+
+
+<!-- ============================================================ -->
+<section id="s0">
+  <h2 class="sec"><span class="num">0</span>先读这页：五分钟看懂整个系统</h2>
+  <p class="sec-sub">如果只读一节，读这节。后面所有章节都是在展开这页的内容。</p>
+
+  <div class="card">
+    <h4>一句话</h4>
+    <p>
+      用户在聊天框里说「帮我把那个耳机退了」，系统<strong>不会</strong>让大模型直接去改订单。
+      大模型只负责两件事：<strong>理解用户想干什么</strong>、<strong>写出一份操作计划</strong>。
+      至于「这份计划能不能执行、什么时候执行、执行失败了怎么办」，全部由确定性代码决定。
+    </p>
+  </div>
+
+  <h3>0.1 系统有两条完全不同的处理路径</h3>
+  <p>
+    一条消息进来，系统先判断它是<strong>查询</strong>还是<strong>写操作</strong>。这两类的处理方式截然不同，
+    这是理解整个系统的第一把钥匙。
+  </p>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 300" role="img" aria-label="系统两条路径的对比">
+      <defs>
+        <marker id="ar" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7280"/>
+        </marker>
+      </defs>
+      <!-- 输入 -->
+      <rect x="16" y="124" width="104" height="52" rx="8" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.4"/>
+      <text x="68" y="146" text-anchor="middle" font-size="12.5" font-weight="700" fill="#123448" font-family="sans-serif">用户消息</text>
+      <text x="68" y="164" text-anchor="middle" font-size="11" fill="#3d4450" font-family="sans-serif">自然语言</text>
+
+      <!-- 路由器 -->
+      <rect x="160" y="124" width="104" height="52" rx="8" fill="#ffffff" stroke="#6b7280" stroke-width="1.3"/>
+      <text x="212" y="146" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1a1d24" font-family="sans-serif">意图路由</text>
+      <text x="212" y="164" text-anchor="middle" font-size="11" fill="#6b7280" font-family="sans-serif">QUERY / WRITE</text>
+
+      <line x1="120" y1="150" x2="158" y2="150" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar)"/>
+
+      <!-- 上分支：查询 -->
+      <path d="M264,150 C296,150 296,58 328,58" fill="none" stroke="#0f766e" stroke-width="1.6" marker-end="url(#ar)"/>
+      <text x="290" y="96" font-size="11.5" font-weight="700" fill="#0f766e" font-family="sans-serif">查询</text>
+
+      <rect x="332" y="26" width="330" height="64" rx="8" fill="#edf7f5" stroke="#0f766e" stroke-width="1.4"/>
+      <text x="350" y="48" font-size="12.5" font-weight="700" fill="#0b3d37" font-family="sans-serif">只读 ReAct 循环</text>
+      <text x="350" y="67" font-size="11.3" fill="#0b3d37" font-family="sans-serif">模型可自由调用 3 个查询工具，边查边想</text>
+      <text x="350" y="82" font-size="11.3" fill="#0b3d37" font-family="sans-serif">无副作用 → 超时可直接重试</text>
+
+      <!-- 下分支：写 -->
+      <path d="M264,150 C296,150 296,232 328,232" fill="none" stroke="#9f1239" stroke-width="1.6" marker-end="url(#ar)"/>
+      <text x="290" y="208" font-size="11.5" font-weight="700" fill="#9f1239" font-family="sans-serif">写操作</text>
+
+      <rect x="332" y="196" width="330" height="76" rx="8" fill="#fdf0f3" stroke="#9f1239" stroke-width="1.4"/>
+      <text x="350" y="218" font-size="12.5" font-weight="700" fill="#651226" font-family="sans-serif">Plan → 确认 → 执行（三段式）</text>
+      <text x="350" y="237" font-size="11.3" fill="#651226" font-family="sans-serif">模型写计划，但一个写工具都碰不到</text>
+      <text x="350" y="252" font-size="11.3" fill="#651226" font-family="sans-serif">必须用户点确认，执行器才动手</text>
+      <text x="350" y="267" font-size="11.3" fill="#651226" font-family="sans-serif">有副作用 → 结果未知时禁止重试，转对账</text>
+
+      <!-- 说明 -->
+      <text x="16" y="288" font-size="11" fill="#6b7280" font-family="sans-serif">同一个系统里两套策略，不是因为不一致，是因为风险面不同。</text>
+    </svg>
+    <figcaption>
+      <strong>图 0-1</strong>　两条路径的分野：查询无副作用，可以放手让模型自由探索；写操作会动钱，必须走在轨道上。
+    </figcaption>
+  </figure>
+
+  <h3>0.2 写操作为什么必须分三段</h3>
+  <p>
+    你可能觉得「让模型直接调用取消订单的工具」更简单。是的，更简单——但那样就有一个问题：
+    <strong>模型说取消就得取消，没有任何东西挡在中间</strong>。而模型是会出错的（它会幻觉、会误解、
+    会被注入），一旦它出错，用户的订单已经没了。
+  </p>
+  <p>三段式的设计是把「谁说了算」重新分配：</p>
+
+  <div class="tbl">
+    <table>
+      <caption>写操作三段式的职责划分</caption>
+      <thead>
+        <tr><th style="width:88px">阶段</th><th style="width:120px">谁负责</th><th>做什么</th><th style="width:210px">为什么是它</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>① 规划</strong></td>
+          <td>大模型只会「翻译」</td>
+          <td>把「不想要了」翻译成 <code>cancelOrder</code> + 订单号 + 原因，写成一个 JSON 计划</td>
+          <td>自然语言的模糊性只有模型能处理</td>
+        </tr>
+        <tr>
+          <td><strong>② 校验</strong></td>
+          <td>确定性代码</td>
+          <td>订单存不存在、是不是本人的、符不符合售后政策——三道检查全过才落库</td>
+          <td>规则必须可验证，不能靠模型「记得」</td>
+        </tr>
+        <tr>
+          <td><strong>③ 确认</strong></td>
+          <td>用户本人</td>
+          <td>看到计划卡片，点确认；金额 ≥ $500 要点两次</td>
+          <td>资金操作的最后一道闸必须是人</td>
+        </tr>
+        <tr>
+          <td><strong>④ 执行</strong></td>
+          <td>执行器</td>
+          <td>幂等、超时二分、失败重试、崩溃续跑</td>
+          <td>可靠性与模型无关，纯粹是工程问题</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout co-key">
+    <span class="lbl">关键设计</span>
+    <p>
+      <strong>模型从头到尾没有「执行」这个动作的选项。</strong>
+      写工具（<code>cancelOrder</code> 等三个）注册在 <code>executor/WriteToolRegistry</code> 里，
+      而模型能看到的工具列表只有 <code>agent/ReadToolBundle</code> 里的三个查询工具。
+      模型就算被提示词注入攻击，也没有一个「调用了就真退款」的函数可以调——因为它拿不到那个函数。
+    </p>
+  </div>
+
+  <h3>0.3 一笔订单的完整旅程（具体例子）</h3>
+  <p>
+    用户 U001 说「我的耳机不想要了，帮我退了吧」。他有一笔 <code>ORD20260901001</code>，$89.99，无线蓝牙耳机，状态 <code>PAID</code>（已付款未发货）。
+  </p>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 236" role="img" aria-label="一笔订单的完整旅程">
+      <defs>
+        <marker id="ar2" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 z" fill="#1e4d6b"/>
+        </marker>
+      </defs>
+      <!-- 序号圆点 -->
+      <g font-family="sans-serif">
+        <!-- 1 -->
+        <circle cx="34" cy="30" r="13" fill="#1e4d6b"/>
+        <text x="34" y="35" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">1</text>
+        <text x="60" y="35" font-size="13" font-weight="700" fill="#123448">意图路由判定为写操作</text>
+        <text x="60" y="54" font-size="11.8" fill="#3d4450">模型分类 QUERY/WRITE；解析失败保守归 QUERY（无副作用一侧）</text>
+
+        <line x1="34" y1="46" x2="34" y2="74" stroke="#cbd2dd" stroke-width="1.3" stroke-dasharray="3 3"/>
+
+        <!-- 2 -->
+        <circle cx="34" cy="88" r="13" fill="#1e4d6b"/>
+        <text x="34" y="93" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">2</text>
+        <text x="60" y="93" font-size="13" font-weight="700" fill="#123448">确定性代码先提取订单号并校验归属</text>
+        <text x="60" y="112" font-size="11.8" fill="#3d4450">正则提取 <tspan font-family="monospace" font-size="11">ORD\d{6,}</tspan> → 查库 → 是不是 U001 的？不是就当场拒绝</text>
+
+        <line x1="34" y1="104" x2="34" y2="132" stroke="#cbd2dd" stroke-width="1.3" stroke-dasharray="3 3"/>
+
+        <!-- 3 -->
+        <circle cx="34" cy="146" r="13" fill="#1e4d6b"/>
+        <text x="34" y="151" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">3</text>
+        <text x="60" y="151" font-size="13" font-weight="700" fill="#123448">模型生成计划 + 代码校验</text>
+        <text x="60" y="170" font-size="11.8" fill="#3d4450">模型输出 <tspan font-family="monospace" font-size="11">cancelOrder</tspan>；白名单校验 → 订单号二次校验 → 政策校验（CANCEL 仅限 PAID）</text>
+
+        <line x1="34" y1="162" x2="34" y2="190" stroke="#cbd2dd" stroke-width="1.3" stroke-dasharray="3 3"/>
+
+        <!-- 4 -->
+        <circle cx="34" cy="204" r="13" fill="#0f766e"/>
+        <text x="34" y="209" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">4</text>
+        <text x="60" y="209" font-size="13" font-weight="700" fill="#0b3d37">落库 PENDING_CONFIRM → 用户确认 → 执行器执行</text>
+        <text x="60" y="228" font-size="11.8" fill="#3d4450">$89.99 &lt; $500，确认一次即可；执行器幂等执行，崩溃也能续跑</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 0-2</strong>　一笔订单的完整旅程。注意第 2、3 步：订单号和归属是<strong>确定性代码</strong>先处理一遍的，
+      模型只负责语义部分。这种「能用代码做的就别交给模型」的分工贯穿全系统。
+    </figcaption>
+  </figure>
+
+
+</section>
+
+<!-- ============================================================ -->
+<section id="s1">
+  <h2 class="sec"><span class="num">1</span>问题定义与设计目标</h2>
+  <p class="sec-sub">先清楚要解决什么问题，才能理解后面每个设计决策为什么长这样。</p>
+
+  <h3>1.1 场景与风险</h3>
+  <p>
+    电商售后客服是一个<strong>「模型犯错代价不可逆」</strong>的场景。用户说「帮我退掉」，
+    背后牵连的是资金回流、库存变更、客诉记录。这类操作有三个特点：
+  </p>
+  <ul>
+    <li><strong>不可撤销</strong>——钱退出去就退不回来了，不像发错一条消息可以撤回。</li>
+    <li><strong>有归属边界</strong>——只能操作自己的订单。让模型来判断「这笔订单是不是你的」是不可接受的。</li>
+    <li><strong>有业务规则</strong>——「已发货的订单不能取消」「退款要在收货 7 天内」，这些规则是业务的，不是模型的常识。</li>
+  </ul>
+
+  <h3>1.2 三个必须解决的问题</h3>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 214" role="img" aria-label="三个核心问题">
+      <g font-family="sans-serif">
+        <rect x="14" y="20" width="206" height="168" rx="9" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.3"/>
+        <text x="34" y="48" font-size="13" font-weight="700" fill="#123448">问题一：意图理解</text>
+        <text x="34" y="72" font-size="11.8" fill="#3d4450">自然语言 → 结构化操作</text>
+        <text x="34" y="96" font-size="11.8" fill="#3d4450">「不想要了」= 取消？退款？</text>
+        <text x="34" y="120" font-size="11.8" fill="#3d4450">「那个东西有问题」= 换货？</text>
+        <text x="34" y="152" font-size="11.5" font-weight="700" fill="#1e4d6b">→ 交给模型</text>
+        <text x="34" y="172" font-size="11.3" fill="#6b7280">模糊语义是模型的强项</text>
+
+        <rect x="238" y="20" width="206" height="168" rx="9" fill="#fdf0f3" stroke="#9f1239" stroke-width="1.3"/>
+        <text x="258" y="48" font-size="13" font-weight="700" fill="#651226">问题二：安全边界</text>
+        <text x="258" y="72" font-size="11.8" fill="#651226">不能动别人的订单</text>
+        <text x="258" y="96" font-size="11.8" fill="#651226">不能违反售后政策</text>
+        <text x="258" y="120" font-size="11.8" fill="#651226">大额操作要人把关</text>
+        <text x="258" y="152" font-size="11.5" font-weight="700" fill="#9f1239">→ 绝不能交给模型</text>
+        <text x="258" y="172" font-size="11.3" fill="#6b7280">规则要可验证、可审计</text>
+
+        <rect x="462" y="20" width="204" height="168" rx="9" fill="#edf7f5" stroke="#0f766e" stroke-width="1.3"/>
+        <text x="482" y="48" font-size="13" font-weight="700" fill="#0b3d37">问题三：可靠性</text>
+        <text x="482" y="72" font-size="11.8" fill="#0b3d37">模型调用会超时</text>
+        <text x="482" y="96" font-size="11.8" fill="#0b3d37">工具调用会失败</text>
+        <text x="482" y="120" font-size="11.8" fill="#0b3d37">进程会崩溃</text>
+        <text x="482" y="152" font-size="11.5" font-weight="700" fill="#0f766e">→ 与模型无关</text>
+        <text x="482" y="172" font-size="11.3" fill="#6b7280">纯粹是工程问题</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 1-1</strong>　三个问题的归属划分——这是全系统最重要的分工原则：
+      <strong>模糊的交给模型，确定的交给代码</strong>。三个问题的解决方案完全不同，混在一起谈就会互相污染。
+    </figcaption>
+  </figure>
+
+  <h3>1.3 六条设计原则</h3>
+  <p>从上面三个问题推导出六条贯穿全项目的原则，后文每个决策都能追溯到其中一条。</p>
+
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:30px">#</th><th style="width:190px">原则</th><th>含义与落地方式</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>P1</td><td><strong>能力最小化</strong></td>
+          <td>模型只拿到完成它那份工作所必需的能力，多一点都不给。落地：只挂载 3 个只读工具。</td>
+        </tr>
+        <tr>
+          <td>P2</td><td><strong>能用代码就别用模型</strong></td>
+          <td>凡是规则确定、可以用代码写的判断，一律不用提示词。落地：订单号用正则提取，归属和政策用纯代码。</td>
+        </tr>
+        <tr>
+          <td>P3</td><td><strong>副作用必须过闸</strong></td>
+          <td>任何会改变外部状态的动 作，之前必须有一个人工的或确定性的闸门。落地：确认门 + 大额二次确认。</td>
+        </tr>
+        <tr>
+          <td>P4</td><td><strong>结果未知 ≠ 失败</strong></td>
+          <td>超时后不能假设「没成功所以重试」，因为可能「已经成功只是没收到回复」。落地：超时结果二分 + 对账。</td>
+        </tr>
+        <tr>
+          <td>P5</td><td><strong>崩溃后要还知道有事没做完</strong></td>
+          <td>恢复的前提不是「能重跑」，而是崩溃后还能发现「有个计划执行到一半」。落地：状态独立提交。</td>
+        </tr>
+        <tr>
+          <td>P6</td><td><strong>控制权必须在自己手里</strong></td>
+          <td>影响可靠性保证的循环不能交给框架。落地：只读路径也用自研循环，不用框架托管。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout co-why">
+    <span class="lbl">为什么单独立一条 P6</span>
+    <p>
+      P6 看起来像是技术偏好，其实是安全要求。如果你用一个把循环藏在内部的框架，
+      那么「最多几步」「token 花多少」「超时怎么处理」你都说不出准确答案——
+      这些是可靠性保证的组成部分，不是实现细节。<strong>说不清的东西没法验证，没法验证的东西不能宣称。</strong>
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s2">
+  <h2 class="sec"><span class="num">2</span>总体架构</h2>
+  <p class="sec-sub">系统的分层结构，以及每一层的职责边界。</p>
+
+  <h3>2.1 分层视图</h3>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 486" role="img" aria-label="系统分层架构">
+      <defs>
+        <marker id="ar3" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7280"/>
+        </marker>
+      </defs>
+      <g font-family="sans-serif">
+        <!-- L1 接口层 -->
+        <rect x="14" y="14" width="652" height="72" rx="9" fill="#ffffff" stroke="#cbd2dd" stroke-width="1.3"/>
+        <text x="30" y="36" font-size="11" font-weight="700" fill="#6b7280" letter-spacing="0.06em">接口层 · api</text>
+        <rect x="30" y="44" width="118" height="30" rx="6" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.1"/>
+        <text x="89" y="63" text-anchor="middle" font-size="11.5" fill="#123448">ChatController</text>
+        <rect x="156" y="44" width="118" height="30" rx="6" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.1"/>
+        <text x="215" y="63" text-anchor="middle" font-size="11.5" fill="#123448">PlanController</text>
+        <rect x="282" y="44" width="118" height="30" rx="6" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.1"/>
+        <text x="341" y="63" text-anchor="middle" font-size="11.5" fill="#123448">ExecuteController</text>
+        <rect x="408" y="44" width="112" height="30" rx="6" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.1"/>
+        <text x="464" y="63" text-anchor="middle" font-size="11.5" fill="#123448">TraceController</text>
+        <rect x="528" y="44" width="124" height="30" rx="6" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.1"/>
+        <text x="590" y="63" text-anchor="middle" font-size="11.5" fill="#123448">GlobalExceptionHandler</text>
+
+        <line x1="340" y1="86" x2="340" y2="106" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar3)"/>
+
+        <!-- L2 编排层 -->
+        <rect x="14" y="108" width="652" height="64" rx="9" fill="#ffffff" stroke="#cbd2dd" stroke-width="1.3"/>
+        <text x="30" y="130" font-size="11" font-weight="700" fill="#6b7280" letter-spacing="0.06em">编排层 · agent</text>
+        <rect x="30" y="138" width="210" height="26" rx="6" fill="#f4f0fd" stroke="#5b21b6" stroke-width="1.1"/>
+        <text x="135" y="156" text-anchor="middle" font-size="11.5" fill="#3f1489">AgentOrchestrator · IntentRouter</text>
+        <rect x="250" y="138" width="180" height="26" rx="6" fill="#edf7f5" stroke="#0f766e" stroke-width="1.1"/>
+        <text x="340" y="156" text-anchor="middle" font-size="11.5" fill="#0b3d37">QueryAgent → ReadLoop</text>
+        <rect x="440" y="138" width="212" height="26" rx="6" fill="#fdf0f3" stroke="#9f1239" stroke-width="1.1"/>
+        <text x="546" y="156" text-anchor="middle" font-size="11.5" fill="#651226">PlanService · PlanManager</text>
+
+        <line x1="340" y1="172" x2="340" y2="192" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar3)"/>
+
+        <!-- L3 执行层 -->
+        <rect x="14" y="194" width="652" height="76" rx="9" fill="#ffffff" stroke="#cbd2dd" stroke-width="1.3"/>
+        <text x="30" y="216" font-size="11" font-weight="700" fill="#6b7280" letter-spacing="0.06em">执行层 · executor</text>
+        <rect x="30" y="224" width="140" height="34" rx="6" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.1"/>
+        <text x="100" y="238" text-anchor="middle" font-size="11.5" fill="#123448">Executor</text>
+        <text x="100" y="252" text-anchor="middle" font-size="10" fill="#6b7280">编排·重试·续跑</text>
+        <rect x="180" y="224" width="140" height="34" rx="6" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.1"/>
+        <text x="250" y="238" text-anchor="middle" font-size="11.5" fill="#123448">StepRunner</text>
+        <text x="250" y="252" text-anchor="middle" font-size="10" fill="#6b7280">单次尝试事务</text>
+        <rect x="330" y="224" width="140" height="34" rx="6" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.1"/>
+        <text x="400" y="238" text-anchor="middle" font-size="11.5" fill="#123448">PlanStateWriter</text>
+        <text x="400" y="252" text-anchor="middle" font-size="10" fill="#6b7280">状态独立提交</text>
+        <rect x="480" y="224" width="172" height="34" rx="6" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.1"/>
+        <text x="566" y="238" text-anchor="middle" font-size="11.5" fill="#123448">WriteToolRegistry</text>
+        <text x="566" y="252" text-anchor="middle" font-size="10" fill="#6b7280">写工具唯一入口</text>
+
+        <line x1="340" y1="270" x2="340" y2="290" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar3)"/>
+
+        <!-- L4 工具层 -->
+        <rect x="14" y="292" width="322" height="90" rx="9" fill="#edf7f5" stroke="#0f766e" stroke-width="1.4"/>
+        <text x="30" y="314" font-size="11" font-weight="700" fill="#0f766e" letter-spacing="0.06em">只读工具 · tools.read（模型可见）</text>
+        <text x="30" y="338" font-size="11.5" fill="#0b3d37">getOrder · getLogistics · getPolicy</text>
+        <text x="30" y="360" font-size="11" fill="#3d4450">身份由 ToolContext 注入，模型无法伪造</text>
+        <text x="30" y="376" font-size="11" fill="#3d4450">归属校验 + 参数校验在工具内部完成</text>
+
+        <rect x="348" y="292" width="318" height="90" rx="9" fill="#fdf0f3" stroke="#9f1239" stroke-width="1.4"/>
+        <text x="364" y="314" font-size="11" font-weight="700" fill="#9f1239" letter-spacing="0.06em">写工具 · tools.write（模型不可见）</text>
+        <text x="364" y="338" font-size="11.5" fill="#651226">cancelOrder · refundOrder · exchangeOrder</text>
+        <text x="364" y="360" font-size="11" fill="#3d4450">从不注册到任何 ChatClient 工具集</text>
+        <text x="364" y="376" font-size="11" fill="#3d4450">只能由 WriteToolRegistry 按名字分发调用</text>
+
+        <line x1="340" y1="382" x2="340" y2="402" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar3)"/>
+
+        <!-- L5 数据层 -->
+        <rect x="14" y="404" width="652" height="68" rx="9" fill="#ffffff" stroke="#cbd2dd" stroke-width="1.3"/>
+        <text x="30" y="426" font-size="11" font-weight="700" fill="#6b7280" letter-spacing="0.06em">数据层 · repo / MySQL 8</text>
+        <text x="30" y="448" font-size="11.5" fill="#3d4450">orders · plans · plan_steps · execution_log · idempotency_keys · policy_rules</text>
+        <text x="30" y="464" font-size="11.5" fill="#3d4450">conversations · conversation_messages · agent_trace</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 2-1</strong>　分层架构。注意工具层被拆成左右两块，颜色不同——
+      左边绿色（只读）是模型能看到的全部，右边红色（写）对模型完全不存在。
+      这条分界线是整个安全模型的地基。
+    </figcaption>
+  </figure>
+
+  <h3>2.2 各层职责与约束</h3>
+
+  <div class="tbl">
+    <table>
+      <caption>每层的职责边界——「不该它做的事」比「该做的事」更重要</caption>
+      <thead>
+        <tr><th style="width:110px">层</th><th style="width:200px">负责</th><th>明确不负责</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>接口层</strong><br><code>api/</code></td>
+          <td>HTTP 协议适配、入参校验、统一异常结构</td>
+          <td>不做业务判断，不碰状态机。业务规则不在这里</td>
+        </tr>
+        <tr>
+          <td><strong>编排层</strong><br><code>agent/</code></td>
+          <td>意图路由、查询循环、计划生成、确认状态机</td>
+          <td>不直接调用写工具，不做事务控制</td>
+        </tr>
+        <tr>
+          <td><strong>执行层</strong><br><code>executor/</code></td>
+          <td>幂等、重试、对账、崩溃续跑、事务边界</td>
+          <td>不生成计划，不判断政策（政策在工具层再校验一次）</td>
+        </tr>
+        <tr>
+          <td><strong>工具层</strong><br><code>tools/</code></td>
+          <td>单个业务操作的自包含实现（含政策与归属校验）</td>
+          <td>不做重试、不做幂等（那是执行层的职责）、不知道 Plan 的存在</td>
+        </tr>
+        <tr>
+          <td><strong>数据层</strong><br><code>repo/</code></td>
+          <td>持久化访问</td>
+          <td>不含业务逻辑</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout co-key">
+    <span class="lbl">一个容易被忽略的设计</span>
+    <p>
+      工具层<strong>自己也要做政策校验</strong>，尽管编排层在生成计划时已经校验过一次。
+      这不是重复劳动，是<strong>纵深防御</strong>：计划生成到执行之间可能隔了几分钟，
+      订单状态可能已经变了；而且执行层可能被 <code>/api/executor/resume</code> 从任意时间点唤起，
+      那时候它拿到的是一个历史计划。工具层的校验是最后一道，也是最可信的一道。
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s3">
+  <h2 class="sec"><span class="num">3</span>数据模型</h2>
+  <p class="sec-sub">九张表，但只有四张真正参与可靠性保证。先看整体，再看为什么这么分。</p>
+
+  <h3>3.1 表清单与用途</h3>
+
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:210px">表名</th><th style="width:96px">角色</th><th>存什么 · 为什么需要它</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>orders</code></td>
+          <td><span class="pill p-core">业务</span></td>
+          <td>订单主数据。金额用<strong>美分整数</strong>存（<code>amount_cents BIGINT</code>），不用浮点——钱不能用浮点表示是常识，但很多项目会忽略。<code>order_no</code> 上有唯一索引。</td>
+        </tr>
+        <tr>
+          <td><code>plans</code></td>
+          <td><span class="pill p-core">核心</span></td>
+          <td>计划主体。<strong>八种状态</strong>（<code>PENDING_CONFIRM</code> → <code>AWAITING_SECOND_CONFIRM</code> → <code>CONFIRMED</code> → <code>EXECUTING</code> → <code>COMPLETED</code> / <code>FAILED</code>，另有 <code>CLOSED</code>、<code>EXPIRED</code>），外加<strong>上下文指纹</strong>。</td>
+        </tr>
+        <tr>
+          <td><code>plan_steps</code></td>
+          <td><span class="pill p-core">核心</span></td>
+          <td>计划的步骤。<code>(plan_id, seq)</code> 唯一索引。存工具名、参数 JSON、状态、<strong>attempt 计数</strong>、结果。</td>
+        </tr>
+        <tr>
+          <td><code>execution_log</code></td>
+          <td><span class="pill p-core">核心</span></td>
+          <td>每一次尝试的落账：状态、错误码、耗时。<strong>断点续跑靠它判断进度，排障靠它还原现场</strong>。</td>
+        </tr>
+        <tr>
+          <td><code>idempotency_keys</code></td>
+          <td><span class="pill p-core">核心</span></td>
+          <td>幂等键。<code>idempotency_key VARCHAR(128)</code> 直接做主键——<strong>靠数据库唯一约束实现防重放</strong>，不靠应用层判断。</td>
+        </tr>
+        <tr>
+          <td><code>policy_rules</code></td>
+          <td><span class="pill p-new">规则</span></td>
+          <td>售后政策做成表而非硬编码，这样基线和完整版<strong>共用同一套规则</strong>，消融实验里政策不是变量。</td>
+        </tr>
+        <tr>
+          <td><code>conversations</code><br><code>conversation_messages</code></td>
+          <td><span class="pill p-new">上下文</span></td>
+          <td>会话与消息，为模型提供历史上下文。进上下文的部分有窗口截断（最近 6 轮）。</td>
+        </tr>
+        <tr>
+          <td><code>agent_trace</code></td>
+          <td><span class="pill p-new">观测</span></td>
+          <td>只读路径的轨迹。<code>(trace_id, step_index)</code> 索引，按序查就是完整时间线。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>3.2 为什么执行日志和轨迹要分成两张表</h3>
+  <p>
+    这是一个看起来可以偷懒的地方：都是「记录发生了什么」，合成一张表不行吗？
+  </p>
+  <p>不行，因为<strong>两张表的语义不同</strong>：</p>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 214" role="img" aria-label="execution_log 与 agent_trace 的区别">
+      <g font-family="sans-serif">
+        <rect x="14" y="18" width="322" height="176" rx="9" fill="#fdf0f3" stroke="#9f1239" stroke-width="1.3"/>
+        <text x="34" y="44" font-size="13" font-weight="700" fill="#651226">execution_log</text>
+        <text x="34" y="64" font-size="11.5" fill="#651226">写路径专用 · 业务语义</text>
+        <line x1="34" y1="74" x2="316" y2="74" stroke="#f0cdd6" stroke-width="1"/>
+        <text x="34" y="96" font-size="11.5" fill="#3d4450">关联 <tspan font-family="monospace" font-size="10.5">plan_id</tspan> + <tspan font-family="monospace" font-size="10.5">step_id</tspan>（均 NOT NULL）</text>
+        <text x="34" y="118" font-size="11.5" fill="#3d4450">记录每次<tspan font-weight="700">尝试</tspan>：状态 / 错误码 / 耗时</text>
+        <text x="34" y="140" font-size="11.5" fill="#3d4450">回答的问题：</text>
+        <text x="34" y="160" font-size="11.5" font-weight="700" fill="#651226">「这一步执行了几次？成功了吗？」</text>
+        <text x="34" y="182" font-size="11.3" fill="#6b7280">续跑与对账的判据来源</text>
+
+        <rect x="348" y="18" width="318" height="176" rx="9" fill="#edf7f5" stroke="#0f766e" stroke-width="1.3"/>
+        <text x="368" y="44" font-size="13" font-weight="700" fill="#0b3d37">agent_trace</text>
+        <text x="368" y="64" font-size="11.5" fill="#0b3d37">只读路径 · 观测语义</text>
+        <line x1="368" y1="74" x2="646" y2="74" stroke="#c3e4dd" stroke-width="1"/>
+        <text x="368" y="96" font-size="11.5" fill="#3d4450">关联 <tspan font-family="monospace" font-size="10.5">trace_id</tspan>（无 Plan）</text>
+        <text x="368" y="118" font-size="11.5" fill="#3d4450">记录每个<tspan font-weight="700">节点</tspan>：MODEL / TOOL / TERMINAL</text>
+        <text x="368" y="140" font-size="11.5" fill="#3d4450">回答的问题：</text>
+        <text x="368" y="160" font-size="11.5" font-weight="700" fill="#0b3d37">「这次为什么没答上来？」</text>
+        <text x="368" y="182" font-size="11.3" fill="#6b7280">含 token 用量、终止原因</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 3-1</strong>　两表分离的理由。关键在于 <code>execution_log</code> 的 <code>plan_id</code> 是 NOT NULL，
+      如果为了兼容只读路径而允许为空，那么「哪些计划执行过」这个查询就会被只读行污染。
+      <strong>把两种语义塞进一张表，换来的是一堆「查询时要记得加过滤条件」的隐式约定。</strong>
+    </figcaption>
+  </figure>
+
+  <h3>3.3 幂等键表：靠数据库而不是靠代码</h3>
+  <div class="card">
+    <pre><code><span class="cmt">-- idempotency_keys：唯一索引 = 构造性防重放</span>
+CREATE TABLE idempotency_keys (
+    idempotency_key   VARCHAR(128) PRIMARY KEY,   <span class="cmt">-- 格式 planId:stepId:attempt</span>
+    plan_id           BIGINT NOT NULL,
+    step_id           BIGINT NOT NULL,
+    attempt           INT NOT NULL,
+    result_status     VARCHAR(16) NULL,           <span class="cmt">-- SUCCESS / FAILED / UNKNOWN</span>
+    result_json       JSON NULL,                  <span class="cmt">-- 冲突时用于回放</span>
+    created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;</code></pre>
+  </div>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 268" role="img" aria-label="幂等键抢占流程">
+      <defs>
+        <marker id="ar4" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7280"/>
+        </marker>
+      </defs>
+      <g font-family="sans-serif">
+        <rect x="14" y="98" width="128" height="52" rx="8" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.3"/>
+        <text x="78" y="120" text-anchor="middle" font-size="12" font-weight="700" fill="#123448">执行一次尝试</text>
+        <text x="78" y="138" text-anchor="middle" font-size="10.5" fill="#3d4450">attempt = N</text>
+
+        <line x1="142" y1="124" x2="176" y2="124" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar4)"/>
+
+        <rect x="180" y="86" width="180" height="76" rx="8" fill="#ffffff" stroke="#1e4d6b" stroke-width="1.3"/>
+        <text x="270" y="108" text-anchor="middle" font-size="11.5" font-weight="700" fill="#123448">原生 INSERT 抢主键</text>
+        <text x="270" y="126" text-anchor="middle" font-size="10.3" fill="#3d4450">INSERT INTO idempotency_keys</text>
+        <text x="270" y="141" text-anchor="middle" font-size="10.3" fill="#3d4450">VALUES ('planId:stepId:N')</text>
+        <text x="270" y="156" text-anchor="middle" font-size="10.3" fill="#6b7280">-- 直接打数据库唯一约束</text>
+
+        <!-- 成功分支 -->
+        <path d="M360,110 C392,110 392,52 424,52" fill="none" stroke="#0f766e" stroke-width="1.6" marker-end="url(#ar4)"/>
+        <text x="384" y="76" font-size="11" font-weight="700" fill="#0f766e">成功</text>
+        <rect x="428" y="24" width="238" height="56" rx="8" fill="#edf7f5" stroke="#0f766e" stroke-width="1.3"/>
+        <text x="446" y="46" font-size="11.5" font-weight="700" fill="#0b3d37">这是第一次执行 → 继续走真实调用</text>
+        <text x="446" y="65" font-size="10.8" fill="#0b3d37">（键是这个 attempt 的「占用凭证」）</text>
+
+        <!-- 冲突分支 -->
+        <path d="M360,140 C392,140 392,196 424,196" fill="none" stroke="#9f1239" stroke-width="1.6" marker-end="url(#ar4)"/>
+        <text x="380" y="176" font-size="11" font-weight="700" fill="#9f1239">唯一键冲突</text>
+        <rect x="428" y="152" width="238" height="100" rx="8" fill="#fdf0f3" stroke="#9f1239" stroke-width="1.3"/>
+        <text x="446" y="172" font-size="11.5" font-weight="700" fill="#651226">说明这个 attempt 已经跑过</text>
+        <text x="446" y="192" font-size="10.8" fill="#651226">① 有 SUCCESS 结果 → 回放，不重复执行</text>
+        <text x="446" y="210" font-size="10.8" fill="#651226">② 有 FAILED 结果 → 可换新 attempt 重试</text>
+        <text x="446" y="228" font-size="10.8" fill="#651226">③ 没有结果记录 → 上次中断在飞行中</text>
+        <text x="464" y="244" font-size="10.8" fill="#9f1239">→ 转对账（见 §6.3）</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 3-2</strong>　幂等键的抢占机制。用「抢占唯一主键」而不是「先查询再判断」是关键：
+      先查后判在并发和崩溃场景下都有窗口期，而数据库的唯一约束是原子的、不会骗人的。
+    </figcaption>
+  </figure>
+
+  <div class="callout co-warn">
+    <span class="lbl">一个真实的坑</span>
+    <p>
+      最初用 JPA 的 <code>save()</code> 来写幂等键，发现冲突根本不会触发——因为 JPA 对「主键已存在」的实体走的是
+      <strong>merge</strong>（更新），而不是 insert，唯一索引自然不会报错。
+      这是一个典型的「你以为你在测唯一性，其实你在测更新」的陷阱。
+      现在改成 <code>JdbcTemplate</code> 的原生 INSERT，让冲突以 <code>DuplicateKeyException</code> 的形式暴露出来。
+    </p>
+  </div>
+
+  <h3>3.4 种子数据：一个刻意设计的测试矩阵</h3>
+  <p>
+    12 条订单数据不是随便造的，每一条都对应一类测试场景。看几个代表性的：
+  </p>
+
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:170px">订单号</th><th style="width:82px">状态</th><th style="width:92px">金额</th><th>它存在的意义</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>ORD20260901001</code></td><td>PAID</td><td>$89.99</td><td>可取消的标准路径，金额低于 $500 阈值</td></tr>
+        <tr><td><code>ORD202609050002</code></td><td>SHIPPED</td><td>$459.50</td><td>已发货 → <strong>取消会被政策拒绝</strong>（CANCEL 仅限 PAID）</td></tr>
+        <tr><td><code>ORD20260910003</code></td><td>DELIVERED</td><td>$699.00</td><td>已送达 + 大额 → 退款需<strong>二次确认</strong>，且在 7 天窗内</td></tr>
+        <tr><td><code>ORD202608010004</code></td><td>DELIVERED</td><td>$1299.00</td><td>送达 8 月 5 日 → <strong>已超出 7 天退款窗</strong>，应被拒</td></tr>
+        <tr><td><code>ORD202609150011</code></td><td>PAID</td><td>$1599.00</td><td>大额（≥$500）→ <strong>二次确认门的核心测试对象</strong></td></tr>
+        <tr><td><code>ORD202609060006</code></td><td>PAID</td><td>$549.99</td><td>属于 U002 → 用 U001 操作时触发<strong>越权拦截</strong></td></tr>
+        <tr><td><code>ORD202609020008</code></td><td>CANCELLED</td><td>$89.99</td><td>已是终态 → 重复操作的行为</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>配套的三条政策规则：</p>
+  <div class="card tight">
+    <pre><code>('CANCEL_ONLY_BEFORE_SHIP', 'CANCEL',   '仅未发货订单可取消',   'PAID',      NULL)
+('REFUND_WITHIN_7D',        'REFUND',   '送达后 7 天内可退款',  'DELIVERED', 7)
+('EXCHANGE_WITHIN_15D',     'EXCHANGE', '送达后 15 天内可换货', 'DELIVERED', 15)</code></pre>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s4">
+  <h2 class="sec"><span class="num">4</span>链路一：查询应答</h2>
+  <p class="sec-sub">「我的订单到哪了」这类问题走这条路。无副作用，所以策略上可以放开一些。</p>
+
+  <h3>4.1 这条链路要解决什么</h3>
+  <p>
+    查询看起来是最简单的部分——查个订单详情而已。但真正的问题是：
+    <strong>模型可能会编。</strong>你问「我的耳机到哪了」，模型完全可能一本正经地回答说
+    「您的订单已发货，预计明天送达」——而它根本没调用任何工具，那段话是它编的。
+  </p>
+  <p>同时，一个查询可能要多轮才完成：「查一下我最近买的那个咖啡机的物流」——模型得先查订单、拿到订单号、再查物流。这就是 ReAct 循环（推理-行动交替）要解决的问题。</p>
+
+  <h3>4.2 自研 ReAct 循环</h3>
+  <p>
+    关键在于：<strong>这个循环是自己写的，不是框架的。</strong>
+  </p>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 322" role="img" aria-label="只读 ReAct 循环">
+      <defs>
+        <marker id="ar5" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7280"/>
+        </marker>
+      </defs>
+      <g font-family="sans-serif">
+        <rect x="240" y="16" width="200" height="44" rx="8" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.3"/>
+        <text x="340" y="36" text-anchor="middle" font-size="12" font-weight="700" fill="#123448">用户提问</text>
+        <text x="340" y="52" text-anchor="middle" font-size="10.3" fill="#3d4450">已知事实集初始化（含用户原话里的订单号）</text>
+
+        <line x1="340" y1="60" x2="340" y2="80" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar5)"/>
+
+        <!-- 边界检查 -->
+        <rect x="228" y="82" width="224" height="52" rx="8" fill="#fdf6e7" stroke="#a16207" stroke-width="1.3"/>
+        <text x="340" y="101" text-anchor="middle" font-size="11.5" font-weight="700" fill="#5c4308">四个硬边界检查</text>
+        <text x="340" y="117" text-anchor="middle" font-size="10.3" fill="#5c4308">步数≤6 · 墙钟≤30s · token≤12000 · 重复≤2</text>
+        <text x="340" y="130" text-anchor="middle" font-size="9.8" fill="#6b7280">任一边界触发 → 停下并说明原因</text>
+
+        <line x1="340" y1="134" x2="340" y2="154" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar5)"/>
+        <text x="352" y="148" font-size="10" fill="#6b7280">通过</text>
+
+        <rect x="240" y="156" width="200" height="40" rx="8" fill="#ffffff" stroke="#1e4d6b" stroke-width="1.3"/>
+        <text x="340" y="181" text-anchor="middle" font-size="11.5" font-weight="700" fill="#123448">模型调用（单次，带超时）</text>
+
+        <line x1="340" y1="196" x2="340" y2="216" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar5)"/>
+
+        <!-- 判断 -->
+        <path d="M340,218 L420,244 L340,270 L260,244 Z" fill="#ffffff" stroke="#1e4d6b" stroke-width="1.3"/>
+        <text x="340" y="242" text-anchor="middle" font-size="11" font-weight="700" fill="#123448">要调工具吗</text>
+        <text x="340" y="257" text-anchor="middle" font-size="10" fill="#3d4450">toolCalls 为空？</text>
+
+        <!-- 否：作答 -->
+        <path d="M420,244 L520,244" fill="none" stroke="#0f766e" stroke-width="1.6" marker-end="url(#ar5)"/>
+        <text x="466" y="236" font-size="10.5" font-weight="700" fill="#0f766e">否</text>
+        <rect x="524" y="212" width="142" height="64" rx="8" fill="#edf7f5" stroke="#0f766e" stroke-width="1.3"/>
+        <text x="595" y="234" text-anchor="middle" font-size="11" font-weight="700" fill="#0b3d37">反幻觉闸门</text>
+        <text x="595" y="250" text-anchor="middle" font-size="10" fill="#0b3d37">答复里的订单号</text>
+        <text x="595" y="264" text-anchor="middle" font-size="10" fill="#0b3d37">有出处吗？</text>
+
+        <!-- 是：执行工具，回到边界检查 -->
+        <path d="M260,244 L160,244 L160,108 L226,108" fill="none" stroke="#a16207" stroke-width="1.6" marker-end="url(#ar5)"/>
+        <text x="182" y="176" font-size="10.5" font-weight="700" fill="#a16207">是</text>
+        <text x="148" y="200" font-size="10" fill="#a16207">执行工具</text>
+        <text x="148" y="214" font-size="10" fill="#a16207">回填结果</text>
+        <text x="148" y="228" font-size="10" fill="#a16207">更新事实集</text>
+
+        <!-- 输出 -->
+        <path d="M595,276 L595,296 L340,296" fill="none" stroke="#0f766e" stroke-width="1.4"/>
+        <line x1="340" y1="296" x2="340" y2="308" stroke="#0f766e" stroke-width="1.4" marker-end="url(#ar5)"/>
+        <text x="470" y="292" font-size="10" fill="#6b7280">通过 → 返回答复</text>
+        <text x="470" y="320" font-size="10" fill="#9f1239">不通过 → 兜底话术 + 记轨迹</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 4-1</strong>　自研 ReAct 循环。四个硬边界（黄色框）在每一轮循环开头检查——
+      这是「模型会不会跑飞」的答案。整张图的每一个判断都在代码里可指认，没有藏在框架内部的黑盒。
+    </figcaption>
+  </figure>
+
+  <h3>4.3 为什么要自己写，不用框架的循环</h3>
+  <p>
+    Spring AI 提供了现成的 <code>ChatClient.tools(...).call()</code>，它会自动跑 ReAct 循环。
+    用起来很省事，但会失去四样东西：
+  </p>
+
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:150px">控制项</th><th style="width:200px">框架托管时会怎样</th><th>自研后能得到什么</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>步数</td><td>循环在框架内部，你不知道跑了几轮</td><td><code>maxSteps=6</code>，超了返回 <code>MAX_STEPS</code> 并说明</td></tr>
+        <tr><td>成本</td><td>拿不到累计 token</td><td>每轮累加，超 <code>12000</code> 主动停下</td></tr>
+        <tr><td>时延</td><td>只有总耗时，没有分段</td><td>单次调用 20s 上限 + 整体 30s 上限，分两级</td></tr>
+        <tr><td>重复动作</td><td>模型可能反复调同一个工具</td><td>同参数重复 2 次即终止</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout co-why">
+    <span class="lbl">实现方式</span>
+    <p>
+      自研的实现手段是给 Spring AI 传一个 <code>internalToolExecutionEnabled(false)</code> 的选项
+      （见 <code>LlmPort.SpringAiLlmPort.callOnce</code>）。这样框架<strong>只负责发一次请求、解析一次响应</strong>，
+      不再替我们跑循环。「要不要继续调工具」这个决定权回到我们手里，上面四个控制项才有可能存在。
+    </p>
+    <p>
+      换句话说：不是不用框架，而是<strong>只用框架的「通信能力」，不用框架的「决策能力」</strong>。
+    </p>
+  </div>
+
+  <h3>4.4 边界触发时会怎样</h3>
+  <p>
+    一个容易做错的地方：边界触发后如果只是静默返回空，用户看到的是「系统没反应」，
+    和「正常回答」在体验上分不清，那这个边界等于白设。
+  </p>
+  <p>所以每一次非正常终止都会<strong>生成一句人话</strong>说明为什么停：</p>
+
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:160px">终止原因</th><th style="width:126px">触发条件</th><th>给用户的说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>ANSWERED</code></td><td>模型不再调工具</td><td>（正常路径，返回答案）</td></tr>
+        <tr><td><code>MAX_STEPS</code></td><td>超过 6 步</td><td>「这个问题需要更多步骤才能查清（已到 6 步上限）……请把问题拆细一点」</td></tr>
+        <tr><td><code>WALL_CLOCK</code></td><td>超过 30 秒</td><td>「这次查询超时了，我没有拿到完整结果，先不下结论」</td></tr>
+        <tr><td><code>TOKEN_BUDGET</code></td><td>超过 12000 tokens</td><td>「消耗的上下文超出了预算（约 N tokens），我主动停下来」</td></tr>
+        <tr><td><code>REPEATED_ACTION</code></td><td>同参数重复调用</td><td>「我发现自己陷入了重复查询，已主动停下」</td></tr>
+        <tr><td><code>FABRICATION_BLOCKED</code></td><td>答复含无出处订单号</td><td>「我没能从系统里确认到这条信息，所以不能给你答复」</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout co-key">
+    <span class="lbl">贯穿的原则</span>
+    <p>
+      注意所有兜底话术的共同点：<strong>宁可说「我不知道」，也不给一个看起来合理的答案。</strong>
+      在售后场景里，一个编造的「您的订单明天送达」会让用户<br>
+      ——不去联系客服、不去查真实状态、按错误信息做决策。这比直接说「没查到」危害大得多。
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s5">
+  <h2 class="sec"><span class="num">5</span>链路二：写操作规划与确认</h2>
+  <p class="sec-sub">「帮我退掉」这类请求走这条路。这是全项目设计密度最高的部分。</p>
+
+  <h3>5.1 完整流程</h3>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 560" role="img" aria-label="写操作规划与确认流程">
+      <defs>
+        <marker id="ar6" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7280"/>
+        </marker>
+      </defs>
+      <g font-family="sans-serif">
+        <!-- 步骤1 -->
+        <rect x="200" y="14" width="280" height="42" rx="8" fill="#f4f0fd" stroke="#5b21b6" stroke-width="1.3"/>
+        <text x="340" y="33" text-anchor="middle" font-size="11.5" font-weight="700" fill="#3f1489">① 意图路由判定为 WRITE</text>
+        <text x="340" y="49" text-anchor="middle" font-size="10" fill="#3d4450">模型分类 · 解析失败保守归 QUERY</text>
+        <line x1="340" y1="56" x2="340" y2="74" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar6)"/>
+
+        <!-- 步骤2 正则提取 -->
+        <rect x="200" y="76" width="280" height="42" rx="8" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.3"/>
+        <text x="340" y="95" text-anchor="middle" font-size="11.5" font-weight="700" fill="#123448">② 正则提取订单号（确定性代码）</text>
+        <text x="340" y="111" text-anchor="middle" font-size="10" fill="#3d4450">ORD\d{6,} · 不交给模型做</text>
+        <line x1="340" y1="118" x2="340" y2="136" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar6)"/>
+
+        <!-- 步骤3 三次拒绝判断 -->
+        <path d="M340,138 L470,166 L340,194 L210,166 Z" fill="#fdf0f3" stroke="#9f1239" stroke-width="1.3"/>
+        <text x="340" y="163" text-anchor="middle" font-size="11" font-weight="700" fill="#651226">订单存在？是本人的？</text>
+        <text x="340" y="178" text-anchor="middle" font-size="10" fill="#651226">不通过 → 直接拒绝</text>
+
+        <path d="M470,166 L560,166" fill="none" stroke="#9f1239" stroke-width="1.5" marker-end="url(#ar6)"/>
+        <text x="510" y="158" font-size="10" font-weight="700" fill="#9f1239">否</text>
+        <rect x="564" y="142" width="102" height="48" rx="8" fill="#fdf0f3" stroke="#9f1239" stroke-width="1.2"/>
+        <text x="615" y="162" text-anchor="middle" font-size="10.3" fill="#651226">拒绝回复</text>
+        <text x="615" y="178" text-anchor="middle" font-size="9.5" fill="#6b7280">不落 Plan</text>
+
+        <line x1="340" y1="194" x2="340" y2="212" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar6)"/>
+        <text x="352" y="206" font-size="10" fill="#6b7280">是</text>
+
+        <!-- 步骤4 模型生成 -->
+        <rect x="200" y="214" width="280" height="46" rx="8" fill="#f4f0fd" stroke="#5b21b6" stroke-width="1.3"/>
+        <text x="340" y="233" text-anchor="middle" font-size="11.5" font-weight="700" fill="#3f1489">③ 模型生成结构化计划</text>
+        <text x="340" y="250" text-anchor="middle" font-size="9.8" fill="#3d4450">{"summary","orderNo","steps":[{"tool","reason"}]}</text>
+        <line x1="340" y1="260" x2="340" y2="278" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar6)"/>
+
+        <!-- 步骤5 三重校验 -->
+        <rect x="168" y="280" width="344" height="76" rx="8" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.4"/>
+        <text x="340" y="300" text-anchor="middle" font-size="11.5" font-weight="700" fill="#123448">④ 三重确定性校验</text>
+        <text x="340" y="318" text-anchor="middle" font-size="10.3" fill="#123448">a. 工具白名单（只能 cancel/refund/exchange）</text>
+        <text x="340" y="333" text-anchor="middle" font-size="10.3" fill="#123448">b. 订单号二次校验（模型可能改写订单号）</text>
+        <text x="340" y="348" text-anchor="middle" font-size="10.3" fill="#123448">c. 政策前置评估（查 policy_rules 表）</text>
+        <line x1="340" y1="356" x2="340" y2="374" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar6)"/>
+
+        <!-- 步骤6 落库 -->
+        <rect x="200" y="376" width="280" height="44" rx="8" fill="#edf7f5" stroke="#0f766e" stroke-width="1.3"/>
+        <text x="340" y="395" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0b3d37">⑤ 落库 PENDING_CONFIRM</text>
+        <text x="340" y="411" text-anchor="middle" font-size="10" fill="#0b3d37">同时写入上下文指纹 + 大额标记</text>
+        <line x1="340" y1="420" x2="340" y2="438" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar6)"/>
+
+        <!-- 步骤7 确认 -->
+        <path d="M340,440 L470,468 L340,496 L210,468 Z" fill="#fdf6e7" stroke="#a16207" stroke-width="1.3"/>
+        <text x="340" y="465" text-anchor="middle" font-size="11" font-weight="700" fill="#5c4308">⑥ 用户确认</text>
+        <text x="340" y="480" text-anchor="middle" font-size="9.8" fill="#5c4308">金额 ≥ $500 需两次</text>
+
+        <path d="M470,468 L560,468" fill="none" stroke="#a16207" stroke-width="1.5"/>
+        <rect x="564" y="444" width="102" height="48" rx="8" fill="#edf7f5" stroke="#0f766e" stroke-width="1.2"/>
+        <text x="615" y="464" text-anchor="middle" font-size="10.3" fill="#0b3d37">CONFIRMED</text>
+        <text x="615" y="480" text-anchor="middle" font-size="9.5" fill="#6b7280">→ 交给执行器</text>
+
+        <line x1="340" y1="496" x2="340" y2="520" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar6)"/>
+        <rect x="200" y="522" width="280" height="30" rx="8" fill="#f8f9fb" stroke="#cbd2dd" stroke-width="1.2"/>
+        <text x="340" y="542" text-anchor="middle" font-size="11" font-weight="700" fill="#3d4450">⑦ 进入链路三：受控执行（§6）</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 5-1</strong>　写操作的七步流程。紫色的两步（①③）是模型参与的，其余全是确定性代码。
+      数一下：<strong>七步里有五步不依赖模型</strong>——这就是「模型说了不算」的具体含义。
+    </figcaption>
+  </figure>
+
+  <h3>5.2 三重校验分别在防什么</h3>
+
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:130px">校验</th><th style="width:230px">防止的问题</th><th>具体实现</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>工具白名单</strong></td>
+          <td>模型幻觉出一个不存在的工具（比如 <code>deleteOrder</code>）</td>
+          <td><code>PlanGenerator.WRITE_TOOLS</code> 是 <code>Set.of</code> 三个名字，解析时任何一个不在集合里就整份计划抛异常</td>
+        </tr>
+        <tr>
+          <td><strong>订单号二次校验</strong></td>
+          <td>模型在生成过程中<strong>改写</strong>订单号。这不是臆测——代码注释里明确写了这个理由</td>
+          <td>计划里的 <code>orderNo</code> 再查一次库，不存在或不是本人的，直接拒绝</td>
+        </tr>
+        <tr>
+          <td><strong>政策前置评估</strong></td>
+          <td>「已发货却要取消」这类业务规则冲突</td>
+          <td>查 <code>policy_rules</code> 表，比对订单状态与时间窗口；不通过就<strong>不生成计划</strong>，直接把原因告诉用户</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout co-key">
+    <span class="lbl">为什么订单号要在代码里先提取一遍</span>
+    <p>
+      用户消息里已经有订单号了（<code>ORD20260901001</code>），为什么还要让模型再输出一遍？
+      因为模型输出的是「计划语义」（要取消、原因是「用户不想要了」），订单号只是它复述的。
+      既然只是复述，就<strong>不要依赖它复述对</strong>——所以用正则从用户原话里先提一遍拿到确定的订单号，
+      再用模型输出的订单号做二次核对。两道都对才继续。
+    </p>
+  </div>
+
+  <h3>5.3 上下文指纹：防止「确认的是一个过期计划」</h3>
+  <p>
+    这是一个真实存在的时间窗问题（安全领域叫 TOCTOU，检查时与使用时不一致）：
+  </p>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 196" role="img" aria-label="指纹失效场景">
+      <g font-family="sans-serif">
+        <!-- 时间轴 -->
+        <line x1="30" y1="42" x2="650" y2="42" stroke="#cbd2dd" stroke-width="1.6"/>
+
+        <circle cx="90" cy="42" r="6" fill="#1e4d6b"/>
+        <text x="90" y="26" text-anchor="middle" font-size="10.5" font-weight="700" fill="#123448">T1</text>
+        <text x="90" y="66" text-anchor="middle" font-size="10.5" fill="#3d4450">用户要求取消</text>
+        <text x="90" y="82" text-anchor="middle" font-size="10" fill="#6b7280">订单 PAID</text>
+        <text x="90" y="98" text-anchor="middle" font-size="10" fill="#6b7280">生成计划</text>
+        <text x="90" y="114" text-anchor="middle" font-size="9.5" fill="#0f766e">指纹 = H(PAID…)</text>
+
+        <circle cx="310" cy="42" r="6" fill="#a16207"/>
+        <text x="310" y="26" text-anchor="middle" font-size="10.5" font-weight="700" fill="#5c4308">T2</text>
+        <text x="310" y="66" text-anchor="middle" font-size="10.5" fill="#5c4308">订单状态变了</text>
+        <text x="310" y="82" text-anchor="middle" font-size="10" fill="#6b7280">PAID → SHIPPED</text>
+        <text x="310" y="98" text-anchor="middle" font-size="10" fill="#6b7280">（仓库发货了）</text>
+        <text x="310" y="114" text-anchor="middle" font-size="9.5" fill="#9f1239">按政策已不可取消</text>
+
+        <circle cx="530" cy="42" r="6" fill="#9f1239"/>
+        <text x="530" y="26" text-anchor="middle" font-size="10.5" font-weight="700" fill="#651226">T3</text>
+        <text x="530" y="66" text-anchor="middle" font-size="10.5" fill="#651226">用户点确认</text>
+
+        <!-- 无指纹的后果 -->
+        <rect x="440" y="128" width="224" height="52" rx="8" fill="#fdf0f3" stroke="#9f1239" stroke-width="1.2"/>
+        <text x="552" y="148" text-anchor="middle" font-size="10.5" font-weight="700" fill="#651226">没有指纹 → 确认后照旧执行</text>
+        <text x="552" y="166" text-anchor="middle" font-size="10" fill="#651226">等于绕过了政策校验，把已发货订单取消了</text>
+
+        <!-- 有指纹 -->
+        <rect x="30" y="128" width="380" height="52" rx="8" fill="#edf7f5" stroke="#0f766e" stroke-width="1.2"/>
+        <text x="220" y="148" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0b3d37">有指纹 → 重算当前指纹，发现不一致</text>
+        <text x="220" y="166" text-anchor="middle" font-size="10" fill="#0b3d37">计划强制置为 EXPIRED，要求用户重新发起诉求</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 5-2</strong>　指纹失效要解决的场景。计划生成与用户确认之间可能隔了几分钟，
+      这几分钟里订单状态可能已经变了。
+    </figcaption>
+  </figure>
+
+  <div class="card">
+    <h4>指纹怎么算</h4>
+    <pre><code><span class="cmt">// PlanService.java —— 生成时算一次</span>
+fingerprint = SHA-256( orderNo | status | amountCents | stepsCanonical )
+
+<span class="cmt">// 用户确认时重算，比对</span>
+<span class="cmt">// 只要订单号、状态、金额、步骤中任何一项变了，指纹就对不上</span></code></pre>
+    <p style="margin-bottom:0">
+      注意指纹包含<strong>步骤列表</strong>，不只是订单信息。这样如果有人改了计划内容，指纹同样会失效。
+    </p>
+  </div>
+
+  <h3>5.4 确认门：为什么大额要点两次</h3>
+  <p>
+    确认门的状态流转（含大额分支）：
+  </p>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 262" role="img" aria-label="Plan 状态机">
+      <defs>
+        <marker id="ar7" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7280"/>
+        </marker>
+      </defs>
+      <g font-family="sans-serif">
+        <!-- 起点 -->
+        <rect x="14" y="88" width="140" height="46" rx="8" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.3"/>
+        <text x="84" y="107" text-anchor="middle" font-size="10.8" font-weight="700" fill="#123448">PENDING</text>
+        <text x="84" y="122" text-anchor="middle" font-size="10.8" font-weight="700" fill="#123448">_CONFIRM</text>
+
+        <!-- 大额分支 -->
+        <line x1="154" y1="100" x2="206" y2="62" stroke="#a16207" stroke-width="1.5" marker-end="url(#ar7)"/>
+        <text x="170" y="70" font-size="9.8" font-weight="700" fill="#a16207">确认·金额≥$500</text>
+
+        <rect x="210" y="20" width="176" height="46" rx="8" fill="#fdf6e7" stroke="#a16207" stroke-width="1.3"/>
+        <text x="298" y="39" text-anchor="middle" font-size="10.5" font-weight="700" fill="#5c4308">AWAITING_SECOND</text>
+        <text x="298" y="54" text-anchor="middle" font-size="10.5" font-weight="700" fill="#5c4308">_CONFIRM</text>
+
+        <line x1="386" y1="43" x2="440" y2="43" stroke="#a16207" stroke-width="1.5" marker-end="url(#ar7)"/>
+        <text x="413" y="35" font-size="9.8" font-weight="700" fill="#a16207">二次确认</text>
+
+        <!-- 普通分支 -->
+        <line x1="154" y1="118" x2="206" y2="132" stroke="#0f766e" stroke-width="1.5" marker-end="url(#ar7)"/>
+        <text x="166" y="146" font-size="9.8" font-weight="700" fill="#0f766e">确认·金额&lt;$500</text>
+
+        <rect x="444" y="20" width="130" height="46" rx="8" fill="#edf7f5" stroke="#0f766e" stroke-width="1.4"/>
+        <text x="509" y="47" text-anchor="middle" font-size="11" font-weight="700" fill="#0b3d37">CONFIRMED</text>
+
+        <path d="M372,132 L440,132 L440,70" fill="none" stroke="#0f766e" stroke-width="1.5" marker-end="url(#ar7)"/>
+
+        <!-- 拒绝 -->
+        <line x1="84" y1="134" x2="84" y2="176" stroke="#9f1239" stroke-width="1.5" marker-end="url(#ar7)"/>
+        <text x="96" y="158" font-size="9.8" font-weight="700" fill="#9f1239">拒绝</text>
+        <rect x="24" y="178" width="120" height="42" rx="8" fill="#fdf0f3" stroke="#9f1239" stroke-width="1.2"/>
+        <text x="84" y="204" text-anchor="middle" font-size="10.5" font-weight="700" fill="#651226">CLOSED</text>
+
+        <!-- 指纹失效 -->
+        <line x1="298" y1="66" x2="298" y2="176" stroke="#5b21b6" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#ar7)"/>
+        <text x="310" y="150" font-size="9.8" font-weight="700" fill="#5b21b6">指纹不一致</text>
+        <rect x="238" y="178" width="120" height="42" rx="8" fill="#f4f0fd" stroke="#5b21b6" stroke-width="1.2"/>
+        <text x="298" y="204" text-anchor="middle" font-size="10.5" font-weight="700" fill="#3f1489">EXPIRED</text>
+
+        <!-- 执行 -->
+        <line x1="509" y1="66" x2="509" y2="176" stroke="#1e4d6b" stroke-width="1.5" marker-end="url(#ar7)"/>
+        <text x="521" y="130" font-size="9.8" font-weight="700" fill="#1e4d6b">执行器</text>
+        <rect x="404" y="178" width="216" height="70" rx="8" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.3"/>
+        <text x="512" y="198" text-anchor="middle" font-size="10.5" font-weight="700" fill="#123448">EXECUTING</text>
+        <line x1="512" y1="208" x2="512" y2="222" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar7)"/>
+        <text x="512" y="240" text-anchor="middle" font-size="10.5" font-weight="700" fill="#123448">COMPLETED / FAILED</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 5-3</strong>　计划状态机。有两条路径需要特别说明：<code>EXPIRED</code>（紫色虚线，指纹失效强制失效）
+      和 <code>CLOSED</code>（用户拒绝，但可以重新激活——用户改主意是正常行为）。
+    </figcaption>
+  </figure>
+
+  <div class="callout co-why">
+    <span class="lbl">大额二次确认背后的判断</span>
+    <p>
+      单次确认对普通操作够了——用户看得懂「取消这个 $89 的耳机订单」意味着什么。
+      但 $1599 的操作是另一回事：用户可能在快速点击、可能没看清金额、可能误触。
+      <strong>第二次确认的价值不在于多一次点击，而在于强制用户重新读一遍金额。</strong>
+    </p>
+    <p style="margin-bottom:0">
+      阈值定义在配置里（<code>aftersale.confirm-threshold-cents: 50000</code>），不是硬编码。
+    </p>
+  </div>
+
+  <h4>一个被评测抓出来的设计缺口</h4>
+  <p>
+    「取消」和「退款」看起来是两个不同的操作，所以在最初实现里，只有 <code>refundOrder</code> 会计算金额、
+    触发大额二次确认。评测跑 $1599 无人机的取消场景时暴露了问题：
+    <strong>取消一个已支付订单 = 全额退款 = 资金回流</strong>，风险性质与退款完全相同。
+  </p>
+  <div class="card tight">
+    <pre><code><span class="cmt">// PlanService.java —— 修正后的写法</span>
+plan.estimatedAmountCents =
+    ("refundOrder".equals(firstTool) || "cancelOrder".equals(firstTool))
+        ? target.getAmountCents() : null;</code></pre>
+  </div>
+  <p>
+    教训是：<strong>按资金流向定义风险等级，而不是按工具名。</strong>
+    这是那种只有真实跑过才会发现的缺口——纯看代码很难意识到「取消已支付订单」和「退款」在资金维度是同一件事。
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section id="s6">
+  <h2 class="sec"><span class="num">6</span>链路三：受控执行与故障恢复</h2>
+  <p class="sec-sub">计划确认之后的部分。这是全项目技术上最难、也最值得讲的一节。</p>
+
+  <h3>6.1 核心难题：超时了，到底成功没成功？</h3>
+  <p>
+    这是分布式系统的经典问题，在「动钱」的场景里尤其致命。考虑这个情形：
+  </p>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 228" role="img" aria-label="超时结果未知问题">
+      <g font-family="sans-serif">
+        <rect x="14" y="20" width="140" height="42" rx="8" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.3"/>
+        <text x="84" y="46" text-anchor="middle" font-size="11" font-weight="700" fill="#123448">发起退款请求</text>
+
+        <line x1="154" y1="41" x2="252" y2="41" stroke="#6b7280" stroke-width="1.5"/>
+        <text x="203" y="33" text-anchor="middle" font-size="9.8" fill="#6b7280">发出</text>
+
+        <!-- 途中丢失 -->
+        <circle cx="300" cy="41" r="6" fill="#9f1239"/>
+        <text x="300" y="24" text-anchor="middle" font-size="10" font-weight="700" fill="#9f1239">响应丢失</text>
+
+        <line x1="348" y1="41" x2="446" y2="41" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <text x="397" y="33" text-anchor="middle" font-size="9.8" fill="#6b7280">已到达下游</text>
+
+        <rect x="450" y="20" width="150" height="42" rx="8" fill="#fdf0f3" stroke="#9f1239" stroke-width="1.3"/>
+        <text x="525" y="38" text-anchor="middle" font-size="11" font-weight="700" fill="#651226">下游已执行退款</text>
+        <text x="525" y="53" text-anchor="middle" font-size="9.8" fill="#651226">钱已经退给用户了</text>
+
+        <!-- 两种假设 -->
+        <rect x="14" y="92" width="322" height="122" rx="9" fill="#fdf0f3" stroke="#9f1239" stroke-width="1.3"/>
+        <text x="34" y="116" font-size="12" font-weight="700" fill="#651226">错误假设：超时 = 没成功</text>
+        <line x1="34" y1="126" x2="316" y2="126" stroke="#f0cdd6" stroke-width="1"/>
+        <text x="34" y="148" font-size="11" fill="#651226">「连接超时了，重试一次吧」</text>
+        <text x="34" y="172" font-size="11" fill="#651226">→ 第二次请求到达下游</text>
+        <text x="34" y="196" font-size="11.5" font-weight="700" fill="#9f1239">→ 用户被退了两次钱</text>
+
+        <rect x="348" y="92" width="318" height="122" rx="9" fill="#edf7f5" stroke="#0f766e" stroke-width="1.3"/>
+        <text x="368" y="116" font-size="12" font-weight="700" fill="#0b3d37">正确做法：结果未知要单独对待</text>
+        <line x1="368" y1="126" x2="646" y2="126" stroke="#c3e4dd" stroke-width="1"/>
+        <text x="368" y="148" font-size="11" fill="#0b3d37">「我先去查一下这笔订单现在什么状态」</text>
+        <text x="368" y="172" font-size="11" fill="#0b3d37">→ 查订单表，看是否已是 REFUNDED</text>
+        <text x="368" y="196" font-size="11.5" font-weight="700" fill="#0f766e">→ 已退就补记成功，没退才考虑补偿</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 6-1</strong>　超时问题。同样的「超时」现象背后有两种完全不同的现实，
+      而处理方式正好相反。<strong>把两者混为一谈是这类系统最危险的缺陷</strong>——它不会报错，只会悄悄多退一次款。
+    </figcaption>
+  </figure>
+
+  <h3>6.2 超时结果二分</h3>
+  <p>所以执行器把「失败」拆成了三类，而不是一类：</p>
+
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:150px">分类</th><th style="width:200px">怎么判断</th><th style="width:150px">处理策略</th><th>理由</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>FAILED</code><br><span style="color:#6b7280;font-size:12.5px">可重试</span></td>
+          <td>连接失败、请求未发出之前的错误</td>
+          <td>换新 attempt 重试，上限 3 次</td>
+          <td>确定没执行，重试是安全的</td>
+        </tr>
+        <tr>
+          <td><code>FAILED_FINAL</code><br><span style="color:#6b7280;font-size:12.5px">业务拒绝</span></td>
+          <td>政策拒绝、越权、订单不存在、参数非法</td>
+          <td><strong>立即终止</strong>，不重试</td>
+          <td>这是确定性的拒绝，重试一万次也是同样结果</td>
+        </tr>
+        <tr>
+          <td><code>UNKNOWN</code><br><span style="color:#6b7280;font-size:12.5px">结果未知</span></td>
+          <td>请求已发出但无响应（超时、阻塞）</td>
+          <td><strong>禁止重试</strong> → 转对账</td>
+          <td>可能已经成功了，重试会造成重复执行</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout co-key">
+    <span class="lbl">这条设计的意义</span>
+    <p>
+      很多系统的失败处理就是「catch 到异常就重试」。在只读场景里这没问题（重查一次没有副作用），
+      但在写操作场景里，<strong>「统一重试」是一个会制造资金事故的策略</strong>。
+      区分这三类，意味着要理解每一类失败背后「外部世界到底发生了什么」——这是从「会写代码」到
+      「理解系统」的分水岭。
+    </p>
+  </div>
+
+  <h3>6.3 对账：怎么判断「上次那笔到底生效了没」</h3>
+  <p>
+    结果未知时不能重试，那怎么办？去查。
+    <strong>每个写工具都有明确的「期望终态」</strong>，查一下订单现在是不是已经到那个状态就知道了。
+  </p>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 210" role="img" aria-label="对账流程">
+      <defs>
+        <marker id="ar8" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7280"/>
+        </marker>
+      </defs>
+      <g font-family="sans-serif">
+        <rect x="14" y="76" width="132" height="52" rx="8" fill="#fdf6e7" stroke="#a16207" stroke-width="1.3"/>
+        <text x="80" y="98" text-anchor="middle" font-size="11" font-weight="700" fill="#5c4308">结果未知</text>
+        <text x="80" y="115" text-anchor="middle" font-size="10" fill="#5c4308">（超时 / 阻塞）</text>
+
+        <line x1="146" y1="102" x2="180" y2="102" stroke="#6b7280" stroke-width="1.4" marker-end="url(#ar8)"/>
+
+        <rect x="184" y="62" width="200" height="80" rx="8" fill="#ffffff" stroke="#1e4d6b" stroke-width="1.3"/>
+        <text x="284" y="84" text-anchor="middle" font-size="11" font-weight="700" fill="#123448">查订单当前状态</text>
+        <text x="284" y="103" text-anchor="middle" font-size="10" fill="#3d4450">desiredOrderStatus(工具名)</text>
+        <text x="284" y="119" text-anchor="middle" font-size="10" fill="#3d4450">cancelOrder → CANCELLED</text>
+        <text x="284" y="134" text-anchor="middle" font-size="10" fill="#3d4450">refundOrder → REFUNDED</text>
+
+        <!-- 命中 -->
+        <path d="M384,84 C416,84 416,42 448,42" fill="none" stroke="#0f766e" stroke-width="1.6" marker-end="url(#ar8)"/>
+        <text x="404" y="58" font-size="10" font-weight="700" fill="#0f766e">已到期望终态</text>
+        <rect x="452" y="18" width="214" height="50" rx="8" fill="#edf7f5" stroke="#0f766e" stroke-width="1.3"/>
+        <text x="470" y="38" font-size="11" font-weight="700" fill="#0b3d37">判定：上次的请求其实生效了</text>
+        <text x="470" y="56" font-size="10.3" fill="#0b3d37">补记 SUCCESS，写入幂等结果，正常继续</text>
+
+        <!-- 未命中 -->
+        <path d="M384,120 C416,120 416,162 448,162" fill="none" stroke="#9f1239" stroke-width="1.6" marker-end="url(#ar8)"/>
+        <text x="400" y="148" font-size="10" font-weight="700" fill="#9f1239">未到期望终态</text>
+        <rect x="452" y="136" width="214" height="64" rx="8" fill="#fdf0f3" stroke="#9f1239" stroke-width="1.3"/>
+        <text x="470" y="156" font-size="11" font-weight="700" fill="#651226">判定：状态不明，不能自己决定</text>
+        <text x="470" y="174" font-size="10.3" fill="#651226">标记 RECONCILE_FAILED 待补偿</text>
+        <text x="470" y="190" font-size="10.3" fill="#651226">明确「禁止盲目重试」，留给人处理</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 6-2</strong>　对账流程。注意右侧下分支的处理——<strong>对账不通过时不猜、不重试，而是标记出来交给人工</strong>。
+      知道自己什么时候不该自作主张，是可靠性设计的一部分。
+    </figcaption>
+  </figure>
+
+  <h3>6.4 幂等与崩溃恢复</h3>
+  <p>
+    上面解决的是「结果未知」。还有一类问题：<strong>进程本身崩了。</strong>
+    执行到一半被 <code>kill -9</code>，重启之后怎么知道该从哪继续？
+  </p>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 320" role="img" aria-label="崩溃恢复时序">
+      <defs>
+        <marker id="ar9" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7280"/>
+        </marker>
+      </defs>
+      <g font-family="sans-serif">
+        <!-- 时间轴 -->
+        <line x1="52" y1="24" x2="52" y2="300" stroke="#cbd2dd" stroke-width="1.5" marker-end="url(#ar9)"/>
+        <text x="52" y="316" text-anchor="middle" font-size="10" fill="#6b7280">时间</text>
+
+        <!-- 1 -->
+        <circle cx="52" cy="48" r="5.5" fill="#1e4d6b"/>
+        <text x="74" y="45" font-size="11.5" font-weight="700" fill="#123448">计划置为 EXECUTING（独立提交）</text>
+        <text x="74" y="61" font-size="10.3" fill="#6b7280">PlanStateWriter.markExecuting —— 这一步决定了崩溃后还找得到它</text>
+
+        <!-- 2 -->
+        <circle cx="52" cy="104" r="5.5" fill="#0f766e"/>
+        <text x="74" y="101" font-size="11.5" font-weight="700" fill="#0b3d37">第 1 步执行成功（独立事务提交）</text>
+        <rect x="74" y="110" width="330" height="30" rx="6" fill="#edf7f5" stroke="#0f766e" stroke-width="1"/>
+        <text x="88" y="130" font-size="10.3" fill="#0b3d37" font-family="monospace">plan_steps[0].status=SUCCESS · execution_log 1 条 · 幂等键 1 条</text>
+        <text x="418" y="130" font-size="10" fill="#6b7280">← 三者同一事务</text>
+
+        <!-- 3 -->
+        <circle cx="52" cy="178" r="5.5" fill="#a16207"/>
+        <text x="74" y="175" font-size="11.5" font-weight="700" fill="#5c4308">第 2 步执行中 —— 进程被 kill -9</text>
+        <text x="74" y="191" font-size="10.3" fill="#6b7280">副作用可能已发生，但本地什么都没记录完</text>
+
+        <!-- 崩溃线 -->
+        <line x1="18" y1="206" x2="640" y2="206" stroke="#9f1239" stroke-width="1.6" stroke-dasharray="6 4"/>
+        <text x="616" y="200" text-anchor="end" font-size="10.5" font-weight="700" fill="#9f1239">崩溃</text>
+
+        <!-- 4 -->
+        <circle cx="52" cy="236" r="5.5" fill="#1e4d6b"/>
+        <text x="74" y="233" font-size="11.5" font-weight="700" fill="#123448">重启 → 扫描 EXECUTING 计划 → 找到它</text>
+        <rect x="74" y="242" width="330" height="30" rx="6" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1"/>
+        <text x="88" y="262" font-size="10.3" fill="#123448" font-family="monospace">plans.status = EXECUTING（这就是没被回滚的那一格）</text>
+
+        <!-- 5 -->
+        <circle cx="52" cy="290" r="5.5" fill="#0f766e"/>
+        <text x="74" y="287" font-size="11.5" font-weight="700" fill="#0b3d37">跳过已成功的第 1 步，从第 2 步继续</text>
+        <text x="74" y="303" font-size="10.3" fill="#6b7280">第 2 步靠幂等键与对账保证不会重复执行 → 最终 COMPLETED</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 6-3</strong>　崩溃恢复时序。整个机制成立的关键在第 1 行和绿色那一步——
+      <strong>它们是「独立提交」的，所以崩溃后还留在库里</strong>。
+    </figcaption>
+  </figure>
+
+  <div class="callout co-warn">
+    <span class="lbl">这里曾经有个严重的实现缺陷</span>
+    <p>
+      最初的实现把 <code>plan.status = "EXECUTING"</code> 和整个执行过程放在<strong>同一个事务</strong>里。
+      看起来没问题，但后果是：崩溃 → 事务回滚 → <code>EXECUTING</code> 这个标记也没了 → 计划退回 <code>CONFIRMED</code> →
+      <code>resume()</code> 扫的是 <code>EXECUTING</code>，什么也扫不到 → <strong>断点续跑从来没有真正生效过</strong>。
+    </p>
+    <p style="margin-bottom:0">
+      同一时期还有第二个问题：幂等键也在那个大事务里，崩溃时一起回滚——意味着重试时<strong>没有任何东西能拦住重复执行</strong>。
+      这两个问题的修复方式就是下一节要讲的「事务边界下沉」。
+    </p>
+  </div>
+
+  <h3>6.5 断点续跑</h3>
+  <p>恢复逻辑本身很简单，前提是数据留对了：</p>
+  <div class="card">
+    <pre><code><span class="cmt">// Executor.resumeAll()：扫描所有 EXECUTING 的计划，逐个续跑</span>
+for (PlanEntity plan : planRepository.findAll()) {
+    if ("EXECUTING".equals(plan.status)) { execute(plan.id, plan.userId); n++; }
+}
+
+<span class="cmt">// execute() 内部：跳过已成功的步骤，从第一个非 SUCCESS 的步骤继续</span>
+for (PlanStepEntity step : steps) {
+    if ("SUCCESS".equals(step.status)) continue;   <span class="cmt">// 断点续跑</span>
+    ...
+}</code></pre>
+  </div>
+  <p>
+    可以看到，<strong>「续跑」这件事本身只有几行代码</strong>。真正难的是让它<em>能</em>工作——
+    也就是保证崩溃之后 <code>plans.status</code> 还留着 <code>EXECUTING</code>、已经成功的步骤还留着 <code>SUCCESS</code>。
+    这部分难度全在事务边界上。
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section id="s7">
+  <h2 class="sec"><span class="num">7</span>核心机制：三条构造性保证</h2>
+  <p class="sec-sub">这一节是全项目最值得带走的内容。三条机制有共同特征：不依赖模型「守规矩」。</p>
+
+  <h3>7.1 什么是「构造性」</h3>
+  <p>
+    先区分两种保证方式的根本差别：
+  </p>
+
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:130px"></th><th style="width:250px">提示词级保证</th><th>构造性保证</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>做法</strong></td>
+          <td>在提示词里写「禁止调用写工具」</td>
+          <td>让模型根本拿不到写工具</td>
+        </tr>
+        <tr>
+          <td><strong>失效条件</strong></td>
+          <td>模型不理解、被绕过、被注入、换了个模型</td>
+          <td>需要修改代码或数据库才能失效</td>
+        </tr>
+        <tr>
+          <td><strong>可验证性</strong></td>
+          <td>只能抽样测试「它这次听话了没」</td>
+          <td>可静态验证：工具列表里就是没有那个函数</td>
+        </tr>
+        <tr>
+          <td><strong>一句话概括</strong></td>
+          <td>「我请求它不要」</td>
+          <td>「它要不到」</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout co-why">
+    <span class="lbl">为什么这个区分很重要</span>
+    <p>
+      在只读场景里，提示词级保证是可以接受的——最坏情况是模型说错话，没有实际损害。
+      但在写操作场景里，<strong>「请求模型不要动钱」和「模型动不了钱」是两种完全不同量级的保证</strong>。
+      前者意味着你的安全边界取决于一个概率系统（模型）当次的表现，后者意味着它不取决于此。
+    </p>
+  </div>
+
+  <h3>7.2 保证一：写工具物理隔离</h3>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 246" role="img" aria-label="写工具物理隔离">
+      <defs>
+        <marker id="ar10" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7280"/>
+        </marker>
+      </defs>
+      <g font-family="sans-serif">
+        <!-- 模型 -->
+        <rect x="14" y="86" width="120" height="66" rx="9" fill="#f4f0fd" stroke="#5b21b6" stroke-width="1.4"/>
+        <text x="74" y="110" text-anchor="middle" font-size="11.5" font-weight="700" fill="#3f1489">大模型</text>
+        <text x="74" y="128" text-anchor="middle" font-size="10" fill="#3f1489">只会生成文本</text>
+        <text x="74" y="143" text-anchor="middle" font-size="10" fill="#3f1489">和工具调用意图</text>
+
+        <!-- 可见工具 -->
+        <line x1="134" y1="106" x2="178" y2="106" stroke="#0f766e" stroke-width="1.6" marker-end="url(#ar10)"/>
+        <text x="156" y="98" text-anchor="middle" font-size="9.5" font-weight="700" fill="#0f766e">能看到</text>
+
+        <rect x="182" y="56" width="188" height="96" rx="9" fill="#edf7f5" stroke="#0f766e" stroke-width="1.4"/>
+        <text x="276" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="#0b3d37">ReadToolBundle</text>
+        <text x="276" y="98" text-anchor="middle" font-size="10.3" fill="#0b3d37">getOrder</text>
+        <text x="276" y="114" text-anchor="middle" font-size="10.3" fill="#0b3d37">getLogistics</text>
+        <text x="276" y="130" text-anchor="middle" font-size="10.3" fill="#0b3d37">getPolicy</text>
+        <text x="276" y="146" text-anchor="middle" font-size="9.8" fill="#6b7280">全部只读，无副作用</text>
+
+        <!-- 不可见 -->
+        <line x1="134" y1="132" x2="178" y2="132" stroke="#9f1239" stroke-width="1.6" stroke-dasharray="3 3"/>
+        <text x="156" y="150" text-anchor="middle" font-size="9.5" font-weight="700" fill="#9f1239">看不到</text>
+        <text x="156" y="166" text-anchor="middle" font-size="9" fill="#9f1239">（没有这个通道）</text>
+
+        <rect x="182" y="176" width="188" height="56" rx="9" fill="#fdf0f3" stroke="#9f1239" stroke-width="1.4" stroke-dasharray="5 3"/>
+        <text x="276" y="198" text-anchor="middle" font-size="11" font-weight="700" fill="#651226">WriteToolRegistry</text>
+        <text x="276" y="216" text-anchor="middle" font-size="10" fill="#651226">cancelOrder · refundOrder · exchangeOrder</text>
+
+        <!-- 执行器 -->
+        <line x1="370" y1="204" x2="470" y2="204" stroke="#1e4d6b" stroke-width="1.5" marker-end="url(#ar10)"/>
+        <text x="420" y="196" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1e4d6b">只有它持有</text>
+
+        <rect x="474" y="176" width="192" height="56" rx="9" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.4"/>
+        <text x="570" y="198" text-anchor="middle" font-size="11" font-weight="700" fill="#123448">Executor</text>
+        <text x="570" y="216" text-anchor="middle" font-size="9.8" fill="#3d4450">按名字分发调用（模型不参与）</text>
+
+        <!-- 结论 -->
+        <text x="340" y="34" text-anchor="middle" font-size="11.5" font-weight="700" fill="#9f1239">模型能做的：生成一个「我要取消订单」的文本</text>
+        <text x="340" y="50" text-anchor="middle" font-size="10.5" fill="#6b7280">但这只是建议，没有任何工具会因此被调用</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 7-1</strong>　物理隔离的实现。写工具不在任何「模型可见的工具集」里，
+      只存在于执行器持有的注册表中。<strong>模型没法调用一个它拿不到的函数。</strong>
+    </figcaption>
+  </figure>
+
+  <h4>连带的设计：身份不能由模型提供</h4>
+  <p>
+    只隔离工具还不够。如果工具的签名是 <code>cancelOrder(orderNo, userId)</code>，而 <code>userId</code>
+    由模型填——那模型填成别人的 ID 就能越权。
+  </p>
+  <div class="card">
+    <pre><code><span class="cmt">// ReadToolBundle.java —— userId 从 ToolContext 注入，不是模型参数</span>
+<span class="cmt">// 注意方法签名里没有 userId，模型无法传这个参数</span>
+public ToolResult getOrder(@ToolParam(description = "订单号") String orderNo,
+                           ToolContext ctx) {          <span class="cmt">// ← 框架注入，非模型可控</span>
+    return getOrderTool.getOrder(orderNo, userId(ctx));
+}
+
+static String userId(ToolContext ctx) {
+    Object v = ctx.getContext().get("userId");
+    if (v == null) throw new IllegalStateException("ToolContext 缺少 userId");
+    return v.toString();
+}</code></pre>
+  </div>
+  <p>
+    这个方法签名里<strong>根本没有 <code>userId</code> 这个参数</strong>，所以模型即使想传也无处可传。
+    身份由编排层在调用前放进 <code>ToolContext</code>。
+  </p>
+
+  <h3>7.3 保证二：读侧反幻觉闸门</h3>
+  <p>
+    前面说过，写路径的安全是构造性的：金额取自订单实体、政策查表、归属由注入的 <code>userId</code> 决定，
+    <strong>模型没有「编」的空间</strong>。
+  </p>
+  <p>
+    但只读路径最初只有提示词约束（「禁止编造任何订单号」）。这就是问题所在：
+    <strong>同一个项目里存在两套标准</strong>——写路径靠架构，读路径靠模型自觉。
+  </p>
+
+  <div class="callout co-key">
+    <span class="lbl">反幻觉闸门</span>
+    <p>
+      做法：<strong>答复中出现的每一个订单号，都必须能在本回合的事实来源里找到出处。</strong>
+      事实来源 = 用户原话 + 本回合所有工具返回内容。找不到出处 = 编造 → 该答复不予采信，降级为兜底话术。
+    </p>
+    <p style="margin-bottom:0">
+      这是纯函数（<code>FabricationGuard.violations(answer, knownFacts)</code>），可独立测试，
+      不依赖模型配合。
+    </p>
+  </div>
+
+  <div class="card">
+    <pre><code><span class="cmt">// FabricationGuard.java —— 核心逻辑就三行</span>
+public Set&lt;String&gt; violations(String answer, Set&lt;String&gt; knownFacts) {
+    Set&lt;String&gt; cited = extract(answer);   <span class="cmt">// 答复里出现的订单号</span>
+    cited.removeAll(knownFacts);           <span class="cmt">// 去掉有出处的</span>
+    return cited;                          <span class="cmt">// 剩下的就是编的</span>
+}</code></pre>
+  </div>
+
+  <div class="callout co-limit">
+    <span class="lbl">这个机制的边界（不要过度宣称）</span>
+    <p style="margin-bottom:8px">代码注释里明确写了两条限制，值得保留：</p>
+    <ul style="margin-bottom:0">
+      <li><strong>只校验订单号这一类强标识实体。</strong>金额、日期、人名暂不校验——在没有结构化事实源的情况下，
+        它们的误报率太高，宁可不做也不要制造假阳性把正常答复拦掉。</li>
+      <li><strong>这是「降低编造出现在用户可见输出里的概率」，不是「消除幻觉」。</strong>
+        如果工具返回的数据本身就是错的，闸门挡不住。</li>
+    </ul>
+  </div>
+
+  <h3>7.4 保证三：事务边界下沉</h3>
+  <p>
+    这是全项目最微妙的一个设计，也是「崩溃恢复」能不能成立的技术前提。
+  </p>
+
+  <h4>先看错误的做法</h4>
+  <figure class="figbox">
+    <svg viewBox="0 0 680 250" role="img" aria-label="事务边界对比">
+      <g font-family="sans-serif">
+        <!-- 错误 -->
+        <rect x="14" y="26" width="318" height="212" rx="9" fill="#fdf0f3" stroke="#9f1239" stroke-width="1.4"/>
+        <text x="34" y="52" font-size="12.5" font-weight="700" fill="#651226">✗ 大事务（整个计划一个事务）</text>
+        <rect x="34" y="64" width="278" height="120" rx="7" fill="#ffffff" stroke="#9f1239" stroke-width="1.2" stroke-dasharray="5 3"/>
+        <text x="173" y="82" text-anchor="middle" font-size="10" fill="#9f1239">├─ 整个计划的 BEGIN</text>
+        <text x="46" y="104" font-size="10.5" fill="#651226">步骤 1 执行成功</text>
+        <text x="46" y="124" font-size="10.5" fill="#651226">步骤 2 执行中… 💥 崩溃</text>
+        <text x="173" y="150" text-anchor="middle" font-size="10" fill="#9f1239">└─ 从未 COMMIT → 全部回滚</text>
+        <text x="173" y="170" text-anchor="middle" font-size="10" fill="#9f1239">于是：步骤1 的日志没了 · 幂等键没了</text>
+        <text x="173" y="200" text-anchor="middle" font-size="11" font-weight="700" fill="#9f1239">EXECUTING 标记也没了</text>
+        <text x="173" y="220" text-anchor="middle" font-size="10.5" fill="#9f1239">→ resume() 扫不到 → 续跑失效</text>
+
+        <!-- 正确 -->
+        <rect x="348" y="26" width="318" height="212" rx="9" fill="#edf7f5" stroke="#0f766e" stroke-width="1.4"/>
+        <text x="368" y="52" font-size="12.5" font-weight="700" fill="#0b3d37">✓ 小事务（一次尝试一个事务）</text>
+
+        <rect x="368" y="62" width="130" height="34" rx="6" fill="#ffffff" stroke="#0f766e" stroke-width="1.2"/>
+        <text x="433" y="76" text-anchor="middle" font-size="10.3" fill="#0b3d37">markExecuting</text>
+        <text x="433" y="90" text-anchor="middle" font-size="9.5" fill="#0f766e">独立提交 ✓</text>
+
+        <rect x="510" y="62" width="136" height="34" rx="6" fill="#ffffff" stroke="#0f766e" stroke-width="1.2"/>
+        <text x="578" y="76" text-anchor="middle" font-size="10.3" fill="#0b3d37">步骤 1 尝试</text>
+        <text x="578" y="90" text-anchor="middle" font-size="9.5" fill="#0f766e">独立提交 ✓</text>
+
+        <rect x="368" y="106" width="278" height="34" rx="6" fill="#ffffff" stroke="#0f766e" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <text x="507" y="120" text-anchor="middle" font-size="10.3" fill="#9f1239">步骤 2 尝试</text>
+        <text x="507" y="134" text-anchor="middle" font-size="9.5" fill="#9f1239">💥 崩溃，未提交 → 只有这一步回滚</text>
+
+        <text x="507" y="166" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0b3d37">库里留下：EXECUTING + 步骤1 SUCCESS</text>
+        <text x="507" y="184" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0b3d37">+ execution_log 1 条 + 幂等键 1 条</text>
+        <text x="507" y="208" text-anchor="middle" font-size="11" font-weight="700" fill="#0f766e">→ resume() 找得到 → 从步骤 2 续跑</text>
+        <text x="507" y="228" text-anchor="middle" font-size="10.3" fill="#0f766e">→ 幂等键还在 → 步骤2 不会重复执行</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 7-2</strong>　事务边界的对比。核心洞察是：<strong>崩溃恢复不是「能重跑」，而是「崩溃后还知道有事没做完」</strong>。
+      大事务把这个「知道」也一起回滚掉了。
+    </figcaption>
+  </figure>
+
+  <h4>三个类的分工</h4>
+  <p>修复方式是拆成三个类，每个负责一种粒度的提交：</p>
+
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:170px">类</th><th style="width:150px">事务</th><th>职责与理由</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>Executor</code></td>
+          <td><strong>无事务</strong></td>
+          <td>只做编排与重试循环。<strong>刻意不加 <code>@Transactional</code></strong>——它要保证的是「每次尝试各自独立提交」，自己开了事务就破坏了这个性质。</td>
+        </tr>
+        <tr>
+          <td><code>StepRunner</code></td>
+          <td><code>@Transactional</code><br><code>(REQUIRED)</code></td>
+          <td>承担「一次尝试」。把业务写 + 步骤状态 + 执行日志 + 幂等键作为<strong>一个原子单元</strong>提交。这是最关键的边界。</td>
+        </tr>
+        <tr>
+          <td><code>PlanStateWriter</code></td>
+          <td><code>@Transactional</code><br><code>(REQUIRED)</code></td>
+          <td>计划状态迁移。独立提交，保证崩溃后状态标记存活。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout co-warn">
+    <span class="lbl">两个容易踩的实现细节</span>
+    <p>
+      <strong>① 为什么必须拆成独立的 Bean。</strong>
+      Spring 的事务是靠<em>代理</em>实现的，<code>this.method()</code> 这种自调用不走代理，
+      注解形同虚设。原实现把 <code>@Transactional</code> 标在 <code>Executor</code> 的私有步骤方法上，
+      <strong>因为自调用而不生效</strong>——「每步落账」从来没有真正发生过。
+    </p>
+    <p style="margin-bottom:0">
+      <strong>② 为什么用 <code>REQUIRED</code> 而不是 <code>REQUIRES_NEW</code>。</strong>
+      这是刻意的双面考虑：生产环境 <code>Executor</code> 不开事务，所以这里各自成为独立事务并提交（要的就是这个）；
+      测试环境测试方法自带事务，于是这里并入测试事务、随测试回滚（保住测试隔离）。
+      如果用 <code>REQUIRES_NEW</code>，测试写入会绕开测试事务污染数据库，反而把测试搞坏。
+    </p>
+  </div>
+
+  <h3>7.5 三条机制的共同点</h3>
+  <div class="card">
+    <ul style="margin-bottom:0">
+      <li><strong>都不依赖模型的表现。</strong>换一个模型、模型被注入、模型抽风，这三条保证都还在。</li>
+      <li><strong>都可以被静态验证。</strong>不需要跑一万次看它有没有出错——看工具列表、看代码路径、看数据库约束就能确认。</li>
+      <li><strong>都有明确的失效边界。</strong>物理隔离防模型越权，不防代码 bug；反幻觉闸门防订单号编造，不防金额编造；事务边界保证本地一致性，不保证跨系统（真实支付接口）的一致性。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s8">
+  <h2 class="sec"><span class="num">8</span>状态机与事务边界</h2>
+  <p class="sec-sub">把散落在各处的状态和事务集中看一遍。</p>
+
+  <h3>8.1 三层状态</h3>
+
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:170px">状态字段</th><th style="width:90px">取值数</th><th>取值与含义</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>orders.status</code></td>
+          <td>6</td>
+          <td><code>PAID</code> · <code>SHIPPED</code> · <code>DELIVERED</code> · <code>CANCELLED</code> · <code>REFUNDED</code> · <code>EXCHANGED</code><br>
+            <span style="color:#6b7280;font-size:13px">业务实体的状态，由写工具改变</span></td>
+        </tr>
+        <tr>
+          <td><code>plans.status</code></td>
+          <td>8</td>
+          <td><code>PENDING_CONFIRM</code> · <code>AWAITING_SECOND_CONFIRM</code> · <code>CONFIRMED</code> · <code>EXECUTING</code> · <code>COMPLETED</code> · <code>FAILED</code> · <code>CLOSED</code> · <code>EXPIRED</code><br>
+            <span style="color:#6b7280;font-size:13px">计划的流程状态，由 PlanManager 与 PlanStateWriter 改变</span></td>
+        </tr>
+        <tr>
+          <td><code>plan_steps.status</code></td>
+          <td>5</td>
+          <td><code>PENDING</code> · <code>RUNNING</code> · <code>SUCCESS</code> · <code>FAILED</code> · <code>UNKNOWN</code><br>
+            <span style="color:#6b7280;font-size:13px">单步的执行结果，由 StepRunner 改变。<strong>UNKNOWN 这一态是关键</strong>——它表示「不知道成功没」</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout co-why">
+    <span class="lbl">为什么 plan_steps 需要 UNKNOWN 这个状态</span>
+    <p>
+      大多数状态机只有「成功/失败」两态。但在这个场景里，「不知道」是一个<strong>必须被显式表达的真实状态</strong>——
+      它对应的处理策略（禁止重试、转对账、标记待人工）与「失败」完全不同。
+      如果硬把它归入「失败」，系统就会去重试，然后重复退款。
+    </p>
+    <p style="margin-bottom:0">
+      <strong>状态机里少一个状态，往往意味着某类情况被迫被错误归类。</strong>
+    </p>
+  </div>
+
+  <h3>8.2 事务边界地图</h3>
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:220px">操作</th><th style="width:110px">事务</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>PlanService.createPlan</code></td><td><code>@Transactional</code></td><td>计划与步骤一起落库，要么都成功要么都不存在</td></tr>
+        <tr><td><code>PlanManager.confirm</code></td><td><code>@Transactional</code></td><td>状态迁移 + 指纹校验结果一起提交</td></tr>
+        <tr><td><code>PlanManager.reject</code></td><td><code>@Transactional</code></td><td>单条状态更新</td></tr>
+        <tr><td><code>Executor.execute</code></td><td><strong>无</strong></td><td><span class="pill p-warn">刻意</span>只做编排，让内部每次尝试独立提交</td></tr>
+        <tr><td><code>StepRunner.attempt</code></td><td><code>REQUIRED</code></td><td><strong>最关键的边界</strong>：业务写 + 状态 + 日志 + 幂等键原子提交</td></tr>
+        <tr><td><code>PlanStateWriter.*</code></td><td><code>REQUIRED</code></td><td>状态迁移独立提交，保证崩溃后可见</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>8.3 一个完整的执行时序</h3>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 344" role="img" aria-label="执行时序图">
+      <defs>
+        <marker id="ar11" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7280"/>
+        </marker>
+      </defs>
+      <g font-family="sans-serif">
+        <!-- 生命线 -->
+        <line x1="80" y1="42" x2="80" y2="300" stroke="#cbd2dd" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <line x1="250" y1="42" x2="250" y2="300" stroke="#cbd2dd" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <line x1="430" y1="42" x2="430" y2="300" stroke="#cbd2dd" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <line x1="596" y1="42" x2="596" y2="300" stroke="#cbd2dd" stroke-width="1.2" stroke-dasharray="4 3"/>
+
+        <rect x="26" y="14" width="108" height="28" rx="6" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.2"/>
+        <text x="80" y="33" text-anchor="middle" font-size="11" font-weight="700" fill="#123448">Executor</text>
+        <rect x="196" y="14" width="108" height="28" rx="6" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.2"/>
+        <text x="250" y="33" text-anchor="middle" font-size="11" font-weight="700" fill="#123448">PlanStateWriter</text>
+        <rect x="376" y="14" width="108" height="28" rx="6" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.2"/>
+        <text x="430" y="33" text-anchor="middle" font-size="11" font-weight="700" fill="#123448">StepRunner</text>
+        <rect x="542" y="14" width="108" height="28" rx="6" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.2"/>
+        <text x="596" y="33" text-anchor="middle" font-size="11" font-weight="700" fill="#123448">WriteTool</text>
+
+        <!-- 1 -->
+        <line x1="80" y1="70" x2="246" y2="70" stroke="#6b7280" stroke-width="1.3" marker-end="url(#ar11)"/>
+        <text x="163" y="64" text-anchor="middle" font-size="10" fill="#3d4450">markExecuting()</text>
+        <text x="163" y="86" text-anchor="middle" font-size="9.3" fill="#0f766e">独立提交：plans.status = EXECUTING</text>
+
+        <!-- 2 -->
+        <line x1="80" y1="116" x2="426" y2="116" stroke="#6b7280" stroke-width="1.3" marker-end="url(#ar11)"/>
+        <text x="253" y="110" text-anchor="middle" font-size="10" fill="#3d4450">attempt(planId, stepId, 0)</text>
+        <text x="253" y="132" text-anchor="middle" font-size="9.3" fill="#5c4308">── 事务开始 ──</text>
+
+        <!-- 3 -->
+        <line x1="430" y1="154" x2="486" y2="154" stroke="#6b7280" stroke-width="1.3" marker-end="url(#ar11)"/>
+        <text x="458" y="148" text-anchor="middle" font-size="9.5" fill="#3d4450">抢幂等键</text>
+        <line x1="596" y1="170" x2="434" y2="170" stroke="#6b7280" stroke-width="1.3" stroke-dasharray="3 3" marker-end="url(#ar11)"/>
+        <text x="515" y="184" text-anchor="middle" font-size="9.3" fill="#0f766e">抢到（无冲突）</text>
+
+        <!-- 4 -->
+        <line x1="430" y1="208" x2="486" y2="208" stroke="#6b7280" stroke-width="1.3" marker-end="url(#ar11)"/>
+        <text x="458" y="202" text-anchor="middle" font-size="9.5" fill="#3d4450">invoke()</text>
+        <line x1="596" y1="224" x2="434" y2="224" stroke="#6b7280" stroke-width="1.3" stroke-dasharray="3 3" marker-end="url(#ar11)"/>
+        <text x="515" y="238" text-anchor="middle" font-size="9.3" fill="#0f766e">改订单状态 → SUCCESS</text>
+
+        <!-- 5 -->
+        <text x="253" y="266" text-anchor="middle" font-size="9.3" fill="#0f766e">── 事务提交 ──</text>
+        <text x="253" y="282" text-anchor="middle" font-size="9.3" fill="#0b3d37">订单状态 + step.status + execution_log + 幂等结果</text>
+        <text x="253" y="298" text-anchor="middle" font-size="9.3" fill="#0b3d37">四者原子提交，一起可见</text>
+
+        <line x1="80" y1="320" x2="246" y2="320" stroke="#6b7280" stroke-width="1.3" marker-end="url(#ar11)"/>
+        <text x="163" y="336" text-anchor="middle" font-size="10" fill="#3d4450">mark(COMPLETED)</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 8-1</strong>　一次成功执行的时序。注意两个「── 事务 ──」标记之间包含了从抢幂等键到改订单状态的全部操作，
+      它们的原子性是幂等保证的基础。
+    </figcaption>
+  </figure>
+</section>
+
+<!-- ============================================================ -->
+<section id="s9">
+  <h2 class="sec"><span class="num">9</span>接口设计</h2>
+  <p class="sec-sub">十个端点，按用途分五组。</p>
+
+  <h3>9.1 端点清单</h3>
+
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:64px">方法</th><th style="width:240px">路径</th><th style="width:200px">用途</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="pill p-core">POST</span></td>
+          <td><code>/api/chat</code></td>
+          <td>对话入口</td>
+          <td>唯一需要用户调用的业务接口。自动分流到查询或规划路径</td>
+        </tr>
+        <tr>
+          <td><span class="pill p-new">GET</span></td>
+          <td><code>/api/plan/{id}</code></td>
+          <td>查计划详情</td>
+          <td>含步骤状态，供前端渲染确认卡片</td>
+        </tr>
+        <tr>
+          <td><span class="pill p-core">POST</span></td>
+          <td><code>/api/plan/{id}/confirm</code></td>
+          <td>确认计划</td>
+          <td>金额 ≥ $500 需调两次，第一次返回 <code>AWAITING_SECOND_CONFIRM</code></td>
+        </tr>
+        <tr>
+          <td><span class="pill p-core">POST</span></td>
+          <td><code>/api/plan/{id}/reject</code></td>
+          <td>拒绝计划</td>
+          <td>置为 <code>CLOSED</code>（后续仍可重新确认，用户改主意是正常行为）</td>
+        </tr>
+        <tr>
+          <td><span class="pill p-core">POST</span></td>
+          <td><code>/api/plan/{id}/execute</code></td>
+          <td>执行计划</td>
+          <td><strong>幂等可重入</strong>——重复调用会续跑而不是重复执行</td>
+        </tr>
+        <tr>
+          <td><span class="pill p-new">POST</span></td>
+          <td><code>/api/executor/resume</code></td>
+          <td>断点续跑</td>
+          <td>扫描 <code>EXECUTING</code> 的计划继续执行，返回恢复数量</td>
+        </tr>
+        <tr>
+          <td><span class="pill p-new">GET</span></td>
+          <td><code>/api/trace/{traceId}</code></td>
+          <td>查执行轨迹</td>
+          <td>按 <code>step_index</code> 升序返回完整时间线</td>
+        </tr>
+        <tr>
+          <td><span class="pill p-warn">POST</span></td>
+          <td><code>/api/fault</code></td>
+          <td>故障注入</td>
+          <td><span class="pill p-warn">仅评测</span>支持通用注入与定向注入（指定 planId + stepSeq）</td>
+        </tr>
+        <tr>
+          <td><span class="pill p-gap">GET</span></td>
+          <td><code>/api/selftest</code></td>
+          <td>自检</td>
+          <td>有副作用，已知问题，见 §13</td>
+        </tr>
+        <tr>
+          <td><span class="pill p-warn">POST</span></td>
+          <td><code>/api/baseline/confirm</code></td>
+          <td>基线模式确认</td>
+          <td><span class="pill p-warn">仅基线</span>V0 的工具级确认对话框，供评测脚本驱动</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>9.2 请求与响应结构</h3>
+
+  <h4>POST /api/chat</h4>
+  <div class="card">
+    <pre><code><span class="cmt">// 请求</span>
+{
+  "userId": "U001",
+  "message": "我的耳机不想要了，帮我退了吧",
+  "conversationId": null      <span class="cmt">// 首次为 null，后续带上以延续上下文</span>
+}
+
+<span class="cmt">// 响应（写操作：带 planCard）</span>
+{
+  "conversationId": 1,
+  "intent": "WRITE",
+  "reply": "已生成执行计划：取消订单 ORD20260901001（无线蓝牙耳机）。请确认后执行…",
+  "planCard": {
+    "planId": 7,
+    "orderNo": "ORD20260901001",
+    "summary": "取消订单 ORD20260901001（无线蓝牙耳机）",
+    "estimatedAmount": "$89.99",
+    "secondConfirmRequired": false,
+    "status": "PENDING_CONFIRM"
+  },
+  "trace": null               <span class="cmt">// 写路径为 null；查询路径返回 traceMeta</span>
+}
+
+<span class="cmt">// 响应（查询：带 trace）</span>
+{
+  "conversationId": 1,
+  "intent": "QUERY",
+  "reply": "您的订单 ORD20260901001 已付款，尚未发货…",
+  "planCard": null,
+  "trace": {
+    "traceId": "a3f2c81b9d4e6072",
+    "termination": "ANSWERED",  <span class="cmt">// 终止原因，机读枚举</span>
+    "steps": 2,
+    "promptTokens": 1840,
+    "completionTokens": 96,
+    "elapsedMs": 2317
+  }
+}</code></pre>
+  </div>
+
+  <div class="callout co-why">
+    <span class="lbl">把 trace 放进响应里，是刻意的设计</span>
+    <p>
+      <code>termination</code> 和 token 用量直接暴露给调用方，理由是：
+      <strong>「这次为什么没答上来」必须当场可见</strong>，否则边界触发和正常回答在用户那里长得一样，
+      边界等于白设。
+    </p>
+    <p style="margin-bottom:0">
+      注意基线模式下 <code>termination</code> 固定为 <code>FRAMEWORK_LOOP</code>——因为那一轮循环跑在框架内部，
+      我们量不到。这个「量不到」被如实标出来了，而不是假装有数据。
+    </p>
+  </div>
+
+  <h4>错误响应</h4>
+  <p>所有异常统一由 <code>GlobalExceptionHandler</code> 产出，含可关联标识：</p>
+  <div class="card tight">
+    <pre><code>{ "error": "INVALID_ARGS", "message": "message 最长 2000 字符", "errorId": "e-8f3a2c" }</code></pre>
+  </div>
+  <p>
+    <code>errorId</code> 同时写进日志，使「用户看到的报错」能对回「日志里的某一行」——
+    <strong>没有这个标识，线上排障只能靠时间戳猜。</strong>
+  </p>
+
+  <h3>9.3 入参校验</h3>
+  <p>用 Bean Validation 而非手写判空：</p>
+  <div class="card tight">
+    <pre><code>public record ChatRequest(
+    Long conversationId,
+    @NotBlank(message = "userId 必填") @Size(max = 32)      String userId,
+    @NotBlank(message = "message 必填") @Size(max = 2000)   String message) {}</code></pre>
+  </div>
+  <p>
+    手写判空只能覆盖「必填」，覆盖不了长度——<strong>超长输入会直接进模型和数据库，那是拿 token 和存储当免费资源用</strong>。
+    这个理由写在了代码注释里。
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section id="s10">
+  <h2 class="sec"><span class="num">10</span>配置与可调参数</h2>
+  <p class="sec-sub">两类配置的生命周期完全不同，所以要分开放。</p>
+
+  <h3>10.1 两类配置</h3>
+
+  <figure class="figbox">
+    <svg viewBox="0 0 680 176" role="img" aria-label="两类配置的区分">
+      <g font-family="sans-serif">
+        <rect x="14" y="20" width="322" height="140" rx="9" fill="#eef4f8" stroke="#1e4d6b" stroke-width="1.3"/>
+        <text x="34" y="46" font-size="12.5" font-weight="700" fill="#123448">安全边界 · aftersale.read.*</text>
+        <line x1="34" y1="56" x2="316" y2="56" stroke="#cbe0ec" stroke-width="1"/>
+        <text x="34" y="78" font-size="11" fill="#123448">max-steps: 6</text>
+        <text x="34" y="98" font-size="11" fill="#123448">wall-clock-ms: 30000</text>
+        <text x="34" y="118" font-size="11" fill="#123448">token-budget: 12000</text>
+        <text x="34" y="138" font-size="11" fill="#123448">max-repeated-actions: 2</text>
+        <text x="34" y="156" font-size="10.3" font-weight="700" fill="#1e4d6b">一旦定下就不该随实验翻转</text>
+
+        <rect x="348" y="20" width="318" height="140" rx="9" fill="#fdf6e7" stroke="#a16207" stroke-width="1.3"/>
+        <text x="368" y="46" font-size="12.5" font-weight="700" fill="#5c4308">实验开关 · aftersale.agent.*</text>
+        <line x1="368" y1="56" x2="646" y2="56" stroke="#edd9a8" stroke-width="1"/>
+        <text x="368" y="78" font-size="11" fill="#5c4308">disable-confirm-gate: false</text>
+        <text x="368" y="98" font-size="11" fill="#5c4308">disable-idempotency: false</text>
+        <text x="368" y="118" font-size="11" fill="#5c4308">disable-timeout-classify: false</text>
+        <text x="368" y="138" font-size="11" fill="#5c4308">react-baseline-mode: false</text>
+        <text x="368" y="156" font-size="10.3" font-weight="700" fill="#a16207">评测时用来关掉某项能力做对照</text>
+      </g>
+    </svg>
+    <figcaption>
+      <strong>图 10-1</strong>　两类配置分开的理由写在 <code>AgentProps</code> 的注释里：
+      前者是「Agent 会不会跑飞」的安全边界，后者是「评测时关掉哪个能力做对照」的实验开关。
+      <strong>两类东西的生命周期不同——边界一旦定下就不该随实验翻转。</strong>
+    </figcaption>
+  </figure>
+
+  <h3>10.2 只读循环的九个参数</h3>
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:250px">配置项</th><th style="width:90px">默认值</th><th>作用与设计理由</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>max-steps</code></td><td>6</td><td>单次请求最多几步。超了返回 <code>MAX_STEPS</code> 并说明</td></tr>
+        <tr><td><code>wall-clock-ms</code></td><td>30000</td><td>整次请求的墙钟上限，防「多步都很快但累加跑飞」</td></tr>
+        <tr><td><code>token-budget</code></td><td>12000</td><td>累计 token 上限，超限主动停止</td></tr>
+        <tr><td><code>call-timeout-ms</code></td><td>20000</td><td><strong>单次</strong>模型调用上限，防单点挂死</td></tr>
+        <tr><td><code>retry-max</code></td><td>2</td><td>仅限流与瞬态错误才重试</td></tr>
+        <tr><td><code>retry-base-backoff-ms</code></td><td>500</td><td>退避基数，实际为 <code>base × 2^(n-1) + 抖动</code></td></tr>
+        <tr><td><code>tool-output-max-chars</code></td><td>4000</td><td>工具返回的截断阈值（见下）</td></tr>
+        <tr><td><code>max-repeated-actions</code></td><td>2</td><td>同参数重复调用多少次后终止</td></tr>
+        <tr><td><code>fabrication-guard-enabled</code></td><td>true</td><td>反幻觉闸门开关（见 §7.3）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout co-why">
+    <span class="lbl">为什么 call-timeout 与 wall-clock 不能合并</span>
+    <p style="margin-bottom:0">
+      它们防的是两类不同的故障：<code>call-timeout-ms</code> 防<strong>「一个请求挂死」</strong>，
+      <code>wall-clock-ms</code> 防<strong>「每一步都不算慢，但加起来跑了很久」</strong>。
+      少了任何一个，另一类故障就拦不住。代码注释里专门说明了这一点。
+    </p>
+  </div>
+
+  <h4>工具输出截断为什么要重新包 JSON</h4>
+  <p>
+    直接 <code>substring</code> 截断会把 JSON 切成半截——而模型收到半截 JSON 时<strong>更容易编</strong>
+    （它会试图「补全」这个残缺结构）。所以超长时的做法是重新包一层合法 JSON：
+  </p>
+  <div class="card tight">
+    <pre><code>{ "truncated": true, "originalChars": 8420, "preview": "…前 4000 字符…" }</code></pre>
+  </div>
+  <p>
+    <code>truncated: true</code> 这个标记很关键：它<strong>告诉模型「这是残缺预览，不是全部事实」</strong>，
+    而不是让模型以为自己拿到了完整数据。
+  </p>
+
+  <h3>10.3 消融开关的实际接线情况</h3>
+  <div class="callout co-limit">
+    <span class="lbl">配置文件与实现不完全一致（如实记录）</span>
+    <p>
+      <code>application.yml</code> 里定义了四个实验开关，但实际接通的是<strong>三个</strong>：
+    </p>
+    <div class="tbl" style="margin:12px 0 10px">
+      <table>
+        <thead>
+          <tr><th style="width:250px">开关</th><th style="width:110px">接线</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>react-baseline-mode</code></td><td><span class="pill p-new">已接通</span></td><td><code>AgentOrchestrator</code> 分支判断，对应 V0 基线</td></tr>
+          <tr><td><code>disable-confirm-gate</code></td><td><span class="pill p-new">已接通</span></td><td><code>PlanManager.confirm</code> 里跳过确认门，对应 V1</td></tr>
+          <tr><td><code>disable-idempotency</code></td><td><span class="pill p-new">已接通</span></td><td><code>StepRunner.attempt</code> 里跳过幂等键抢占</td></tr>
+          <tr><td><code>disable-timeout-classify</code></td><td><span class="pill p-gap">未接通</span></td><td><code>timeoutClassifyEnabled()</code> 只有定义、<strong>没有任何调用点</strong>。打开它不会产生任何行为变化</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-bottom:0">
+      这意味着「超时二分」这个能力目前<strong>无法通过开关消融</strong>。要做它的单项消融实验，
+      得先把 <code>timeoutClassifyEnabled()</code> 接到 <code>StepRunner</code> 的判断里。
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s11">
+  <h2 class="sec"><span class="num">11</span>工程结构</h2>
+  <p class="sec-sub">63 个主源码文件的组织方式，以及包结构背后的意图。</p>
+
+  <h3>11.1 目录树</h3>
+  <div class="card">
+    <pre><code>src/main/java/com/aftersale/
+├── AftersaleAgentApplication.java
+├── api/                    <span class="cmt">接口层：HTTP 适配、入参校验、统一异常</span>
+│   ├── ChatController.java            对话入口
+│   ├── PlanController.java            计划查询 / 确认 / 拒绝
+│   ├── ExecuteController.java         执行 / 续跑 / 故障注入
+│   ├── TraceController.java           轨迹查询
+│   ├── SelfTestController.java        自检（有副作用，见 §13）
+│   ├── BaselineConfirmController.java 基线模式的工具级确认
+│   └── GlobalExceptionHandler.java    统一错误结构
+├── agent/                  <span class="cmt">编排层：路由、循环、计划、确认状态机</span>
+│   ├── AgentOrchestrator.java         入口编排 + 基线分支
+│   ├── IntentRouter.java              读写分流（解析失败保守归 QUERY）
+│   ├── QueryAgent.java                只读路径：声明工具集与提示词
+│   ├── ReadLoop.java                  ★ 自研 ReAct 循环（577 行）
+│   ├── ReadToolBundle.java            ★ 模型可见的全部工具（3 个只读）
+│   ├── FabricationGuard.java          ★ 反幻觉闸门（纯函数）
+│   ├── PlanService.java               计划生成 + 三重校验 + 指纹
+│   ├── PlanManager.java               ★ 确认门状态机
+│   ├── PlanGenerator.java             计划解析（白名单 + 容错解析）
+│   ├── IntentRouter.java              意图路由
+│   ├── ConversationService.java       会话历史
+│   ├── LlmPort.java                   LLM 端口抽象（含 callOnce）
+│   ├── AgentStep.java / TraceSink.java / JdbcTraceSink.java   轨迹
+│   ├── BaselineToolBundle.java        基线模式：读写工具全挂载
+│   └── PendingWriteStore.java         基线的待确认写操作
+├── executor/               <span class="cmt">执行层：幂等、重试、对账、续跑</span>
+│   ├── Executor.java                  ★ 编排（刻意无事务）
+│   ├── StepRunner.java                ★ 单次尝试（事务边界在这里）
+│   ├── PlanStateWriter.java           ★ 状态独立提交
+│   ├── WriteToolRegistry.java         ★ 写工具唯一入口
+│   └── FaultInjector.java             故障注入（评测）
+├── tools/                  <span class="cmt">工具层</span>
+│   ├── PolicyService.java             政策评估（纯代码）
+│   ├── ToolResult.java / ToolErrorCode.java   统一返回与错误码
+│   ├── WriteTool.java                 写工具接口标记
+│   ├── read/                          <span class="cmt">← 模型可见</span>
+│   │   ├── GetOrderTool.java
+│   │   ├── GetLogisticsTool.java
+│   │   └── GetPolicyTool.java
+│   └── write/                         <span class="cmt">← 模型不可见</span>
+│       ├── AbstractWriteTool.java     公共前置（含归属校验）
+│       ├── CancelOrderTool.java
+│       ├── RefundOrderTool.java
+│       └── ExchangeOrderTool.java
+├── domain/                 9 个 JPA 实体
+├── enums/                  OrderStatus / PlanStatus / ExecutionStatus / RiskLevel
+├── repo/                   8 个 Repository
+└── config/                 AgentProps / PropsConfig
+
+src/main/resources/
+├── application.yml         配置（含 read.* 九个硬边界）
+├── schema.sql              九张表
+├── data.sql                12 条种子订单 + 3 条政策规则
+└── static/index.html       演示页（原生 JS，含确认卡片）
+
+src/test/java/com/aftersale/
+├── D1AcceptanceTest.java   schema / 工具契约        7 例
+├── D2AcceptanceTest.java   意图路由                 5 例
+├── D3AcceptanceTest.java   规划 / 确认门           18 例
+├── D4AcceptanceTest.java   执行器                   9 例
+├── D5DurabilityTest.java   持久性（刻意不加事务）   2 例
+└── ReadLoopTest.java       循环边界与容错           8 例</code></pre>
+  </div>
+
+  <h3>11.2 包结构的意图</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:110px">包</th><th>设计意图</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>tools/read</code><br><code>tools/write</code></td>
+          <td><strong>读写在包级别就分开</strong>。这不是为了好看——<code>ReadToolBundle</code> 只 import <code>tools.read</code> 下的类，
+            <code>WriteToolRegistry</code> 只 import <code>tools.write</code> 下的类。<strong>隔离在编译期就成立</strong>，不靠运行时检查。</td>
+        </tr>
+        <tr>
+          <td><code>agent/</code><br><code>executor/</code></td>
+          <td>把「决定做什么」（agent）与「怎么可靠地做」（executor）拆开。前者关心语义与安全边界，后者纯粹关心可靠性。
+            <strong>两者的关注点没有交集，混在一起会让两类问题互相干扰。</strong></td>
+        </tr>
+        <tr>
+          <td><code>executor/</code> 三个类</td>
+          <td><code>Executor</code> / <code>StepRunner</code> / <code>PlanStateWriter</code> 的拆分<strong>完全是为了事务边界</strong>，
+            不是职责美学。这类拆分是最难凭直觉想到的——它源于「Spring 事务靠代理，自调用不生效」这个具体的技术约束。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>11.3 配套脚本与评测材料</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:250px">文件</th><th>作用</th></tr></thead>
+      <tbody>
+        <tr><td><code>eval/cases.json</code></td><td>36 条评测任务定义，每条带 pass 条件</td></tr>
+        <tr><td><code>eval/run_eval.py</code></td><td>HTTP 评测驱动，每 case 前自动复位数据库</td></tr>
+        <tr><td><code>eval/tau_run.py</code></td><td>τ-bench 基准驱动</td></tr>
+        <tr><td><code>eval/EVAL_REPORT.md</code></td><td>消融评测报告（三配置对照 + 逐案归因）</td></tr>
+        <tr><td><code>scripts/crash_recovery_probe.sh</code></td><td><strong>进程级崩溃恢复实验</strong>：真实 kill -9 + 重启续跑 + 逐条断言</td></tr>
+        <tr><td><code>scripts/reset_demo_data.sh</code></td><td>演示数据复位</td></tr>
+        <tr><td><code>docs/DESIGN.html</code></td><td>本文档</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s12">
+  <h2 class="sec"><span class="num">12</span>正确性如何被验证</h2>
+  <p class="sec-sub">「我实现了 X」和「X 真的生效了」是两件事。这节讲怎么区分。</p>
+
+  <h3>12.1 三档证据强度</h3>
+  <p>
+    项目里不同能力被验证的强度是不同的，把这一点说清楚比笼统说「都测过了」更有价值。
+  </p>
+
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:96px">档位</th><th style="width:230px">证据形式</th><th>能证明什么 · 不能证明什么</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="pill p-gap">第 1 档</span></td>
+          <td>提示词里写了约束</td>
+          <td><strong>不构成证据。</strong>能证明「我要求模型这样做」，不能证明「模型会这样做」</td>
+        </tr>
+        <tr>
+          <td><span class="pill p-warn">第 2 档</span></td>
+          <td>普通单元测试</td>
+          <td>能证明逻辑分支正确。<strong>但对持久化/恢复类能力无效</strong>（见下）</td>
+        </tr>
+        <tr>
+          <td><span class="pill p-new">第 3 档</span></td>
+          <td>进程级真实实验</td>
+          <td>能证明系统在真实故障下的行为。<strong>持久化、恢复、幂等必须站这一档</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout co-warn">
+    <span class="lbl">一个关键的陷阱：带测试事务的单测证明不了持久性</span>
+    <p>
+      大多数 Spring 项目的集成测试会给测试方法加 <code>@Transactional</code>，测试结束后自动回滚，保证测试之间不互相污染。
+      这本身是对的。
+    </p>
+    <p>
+      但如果被测代码是<strong>「崩溃恢复」</strong>这类能力，这个做法就失效了——
+      因为测试事务会把<strong>被测代码的提交也一并回滚</strong>。
+      <strong>等于用橡皮擦去证明铅笔写过字。</strong>
+    </p>
+    <p style="margin-bottom:0">
+      所以这个项目里的持久性测试（<code>D5DurabilityTest</code>）<strong>刻意不加 <code>@Transactional</code></strong>，
+      并且把「为什么不能加」写进了测试注释。真正证明崩溃恢复的是
+      <code>scripts/crash_recovery_probe.sh</code>——它对一个真的在执行的进程发 <code>kill -9</code>。
+    </p>
+  </div>
+
+  <h3>12.2 崩溃恢复实验是怎么做的</h3>
+  <p>这是项目里证据强度最高的一个实验，值得完整看清它的步骤：</p>
+
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:44px">#</th><th style="width:230px">动作</th><th>断言 / 目的</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>启动应用，准备一个两步计划</td><td>计划状态 <code>PENDING_CONFIRM</code></td></tr>
+        <tr><td>2</td><td>确认并开始执行</td><td>—</td></tr>
+        <tr><td>3</td><td>定向注入 <code>HANG</code>：让第 2 步阻塞</td><td>制造「第 1 步已完成、第 2 步阻塞中」的窗口</td></tr>
+        <tr><td>4</td><td><strong>kill -9 杀死进程</strong></td><td>不做优雅退出，模拟真实崩溃</td></tr>
+        <tr><td>5</td><td>检查数据库现场</td><td><strong>5 条断言</strong>：<code>plans.status=EXECUTING</code> / 第 1 步 <code>SUCCESS</code> / <code>execution_log</code> 1 条 / <code>idempotency_keys</code> 1 条 / 订单已是 <code>CANCELLED</code></td></tr>
+        <tr><td>6</td><td>重启应用，调用 <code>/api/executor/resume</code></td><td>返回 <code>{"resumed":1}</code>——找到了那个没做完的计划</td></tr>
+        <tr><td>7</td><td>检查续跑结果</td><td><strong>5 条断言</strong>：计划 <code>COMPLETED</code> / 第 1 步日志<strong>仍为 1 条</strong>（未重复执行）/ 第 2 步执行一次 / 第 2 步副作用生效</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout co-key">
+    <span class="lbl">这个实验的关键设计</span>
+    <p>
+      <strong>第 5 步的断言是整个实验的核心。</strong>它证明的不是「系统恢复了」，而是
+      <strong>「崩溃之后系统还知道有事没做完」</strong>——这才是恢复的前提。
+      第 1 步的 <code>execution_log</code> 只有 1 条，证明续跑时没有重复执行。
+    </p>
+    <p style="margin-bottom:0">
+      这个实验是可重复运行的脚本，退出码 0 表示全部断言通过。也就是说：
+      <strong>任何人拿到这个仓库都能自己跑一遍验证。</strong>
+    </p>
+  </div>
+
+  <h3>12.3 消融评测</h3>
+  <p>评测设计的核心是「同模型、同任务集、同判定规则，只变一个东西」。</p>
+
+  <div class="tbl">
+    <table>
+      <caption>三个配置的对照（36 条任务）</caption>
+      <thead>
+        <tr><th style="width:110px">配置</th><th style="width:220px">消融了什么</th><th style="width:110px">完成率</th><th>高额操作拦截</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>V0 基线</strong></td>
+          <td>变成单环 ReAct 直连，读写工具全挂载</td>
+          <td>31/35</td>
+          <td>5/6（缺大额二次确认）</td>
+        </tr>
+        <tr>
+          <td><strong>V1</strong></td>
+          <td>去掉 Plan 级确认门</td>
+          <td>35/36</td>
+          <td>5/6（同上）</td>
+        </tr>
+        <tr>
+          <td><strong>V2 完整版</strong></td>
+          <td>—</td>
+          <td><strong>36/36</strong></td>
+          <td><strong>6/6</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>两个值得注意的结论：</p>
+  <ul>
+    <li>
+      <strong>越权拦截在三配置下都是 100%。</strong>这恰好印证了「安全是构造性保证」——
+      因为归属与政策校验在工具层是确定性代码，不依赖模型自觉，所以连基线版本也拦得住。
+      V2 的增量来自「确认门」和「规划校验」，不是「一个更听话的模型」。
+    </li>
+    <li>
+      <strong>V0 的失败集中在故障恢复场景。</strong>基线把「失败了怎么重试」交给模型在对话里临场判断，
+      多轮之后模型会偏离任务；V2 由执行器确定性地处理，所以自愈了。
+      <strong>这是「把可靠性从模型手里拿走」这句话的具体证据。</strong>
+    </li>
+  </ul>
+
+  <div class="callout co-limit">
+    <span class="lbl">这个评测的局限（必须说明）</span>
+    <ul style="margin-bottom:0">
+      <li><strong>V1 → V2 的 +2.8pp 是四项机制的合力</strong>（确认门 + 大额分级 + 指纹失效 + 断点续跑），
+        四项没有单独关闭做过对照，所以<strong>拆不出单项贡献</strong>。要做单项归因，需要给指纹失效和断点续跑各补一个消融开关，跑六组配置。</li>
+      <li>36 条样本属于小样本，判定部分依赖关键词匹配，报告里已如实标注。</li>
+      <li>报告记录的是单轮结果，LLM 有随机性，补跑取均值会更稳。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s13">
+  <h2 class="sec"><span class="num">13</span>已知边界与设计取舍</h2>
+  <p class="sec-sub">明确说出「不做什么」和「哪里不够好」，比声称什么都做了更可信。</p>
+
+  <h3>13.1 有意的取舍</h3>
+  <p>下面这些不是没做完，是判断了「不做」：</p>
+
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:170px">项目</th><th style="width:100px">决定</th><th>理由</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>长期记忆</td>
+          <td><span class="pill p-core">不做</span></td>
+          <td>售后场景的上下文是订单本身，而订单在数据库里、随查随有。
+            <strong>做成向量检索的「记忆层」是包装层，不是能力层</strong>——它增加复杂度但不解决这里的真问题。</td>
+        </tr>
+        <tr>
+          <td>多 Agent 协作</td>
+          <td><span class="pill p-core">不做</span></td>
+          <td>没有哪个子任务复杂到需要独立 Agent。<strong>多 Agent 只有在能产生可测收益时才值得引入</strong>，
+            否则只是把一个模型的问题变成多个模型的问题。</td>
+        </tr>
+        <tr>
+          <td>模型微调 / 训练</td>
+          <td><span class="pill p-core">不做</span></td>
+          <td>这个项目的主张是「模型不可信」，既然如此，把安全性寄托在「训练一个更听话的模型」上就自相矛盾了。
+            <strong>应该用工程手段而不是训练手段解决。</strong></td>
+        </tr>
+        <tr>
+          <td>复杂前端</td>
+          <td><span class="pill p-core">从简</span></td>
+          <td>演示页用原生 JS 写（14.7 KB），目的是<strong>让链路可演示</strong>而不是做产品。
+            前端投入不产生可靠性收益。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>13.2 已知缺口</h3>
+
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th style="width:180px">缺口</th><th style="width:100px">影响</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>/api/selftest</code> 有副作用</td>
+          <td><span class="pill p-gap">中</span></td>
+          <td>自检接口会写数据。原设计里它用 <code>rollbackFor = Exception.class</code> 试图回滚，
+            但对「正常返回」的路径不会回滚——<strong><code>rollbackFor</code> 只扩大异常范围，不会让正常返回回滚</strong>。</td>
+        </tr>
+        <tr>
+          <td><code>disable-timeout-classify</code> 未接线</td>
+          <td><span class="pill p-warn">中</span></td>
+          <td>开关存在但没有调用点（见 §10.3）。影响：超时二分能力无法单独消融</td>
+        </tr>
+        <tr>
+          <td>写路径越权拒绝无审计记录</td>
+          <td><span class="pill p-warn">中</span></td>
+          <td>越权时只返回拒绝消息，不写 <code>agent_trace</code> 或 <code>execution_log</code>。
+            <strong>「谁在什么时候试图操作不属于自己的订单」在库里查不到</strong>——安全类场景值得补</td>
+        </tr>
+        <tr>
+          <td>恢复语义仅限单进程</td>
+          <td><span class="pill p-warn">中</span></td>
+          <td><code>resumeAll()</code> 没有分布式锁。多实例部署时可能重复接管同一计划
+            （虽然幂等键能兜住重复执行，但会有无谓的并发）</td>
+        </tr>
+        <tr>
+          <td>无真实支付/物流对接</td>
+          <td><span class="pill p-new">低</span></td>
+          <td>写工具操作的是本地 <code>orders</code> 表。<strong>真实对接会让一致性问题的难度上升一个量级</strong>
+            （跨系统事务无法回滚），当前对账机制正是为此预留的思路，但没被真正考验过</td>
+        </tr>
+        <tr>
+          <td>无多租户与鉴权</td>
+          <td><span class="pill p-new">低</span></td>
+          <td><code>userId</code> 由请求方传入，没有身份认证层。演示场景下可控</td>
+        </tr>
+        <tr>
+          <td>无监控告警</td>
+          <td><span class="pill p-new">低</span></td>
+          <td>有轨迹可查（排查型观测），但没有指标聚合与告警（运营型观测）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>13.3 文档与实现的一处不一致</h3>
+  <div class="callout co-limit">
+    <span class="lbl">如实记录</span>
+    <p style="margin-bottom:0">
+      <code>USE_GUIDE.md</code> 里教演示者用 <code>--aftersale.inject-timeout-after=xxx</code> 来演示超时，
+      但<strong>这个参数在整个项目里只有这一处出现</strong>，配置文件里没有、代码里也没有。
+      按该文档操作会静默无效。正确的做法是用 <code>POST /api/fault?mode=TIMEOUT_UNKNOWN</code>。
+    </p>
+  </div>
+
+  <h3>13.4 如果继续做，优先级</h3>
+  <div class="card">
+    <ol style="margin-bottom:0">
+      <li><strong>补齐可执行示例与干净环境复现记录</strong>——这是「别人能不能复现」的问题，成本最低、影响最大。</li>
+      <li><strong>给指纹失效与断点续跑补消融开关，跑六组配置</strong>——把 V1→V2 的 +2.8pp 拆成单项贡献表。</li>
+      <li><strong>补评测口径</strong>：端到端耗时、单任务成本、预算超限率。
+        <strong>原料其实都有了</strong>（<code>agent_trace.latency_ms</code> 逐节点记录、token 每步记录、终止原因可枚举），
+        只差聚合与单价换算。</li>
+      <li><strong>修掉 <code>disable-timeout-classify</code> 的接线</strong>与 <code>USE_GUIDE.md</code> 的失效参数。</li>
+      <li><strong>越权拒绝落审计</strong>——安全类项目里这条不该缺。</li>
+      <li>依赖锁定（lockfile / wrapper）与配置外置（数据库账密）。</li>
+    </ol>
+  </div>
+</section>
+
+
+<div class="foot">
+  <p style="margin-bottom:8px">
+    <strong>关于本文档</strong>　本文的每一条设计说明都对应到源码位置，未标注出处的一般性描述请以代码为准。
+  </p>
+  <p style="margin-bottom:8px">
+    文中所有「已知缺口」与「文档不一致」均为核查后如实记录，未做美化——
+    目的是让读者知道这套设计真正的边界在哪，而不是给出一个「完美系统」的印象。
+  </p>
+  <p style="margin-bottom:0; color:#9aa3af">
+    AfterSale Agent 设计说明书 · 基准源码 2026-09-19 · 与 <code>README.md</code>、<code>TECH_SUMMARY.md</code> 并列
+  </p>
+</div>
+
+</div>
+</body>
+</html>

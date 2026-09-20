@@ -10,7 +10,7 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Spring AI](https://img.shields.io/badge/Spring%20AI-1.1-blue.svg)](https://spring.io/projects/spring-ai)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1.svg)](https://www.mysql.com/)
-[![Tests](https://img.shields.io/badge/tests-39%20passed-success.svg)](#-测试)
+[![Tests](https://img.shields.io/badge/tests-49%20passed-success.svg)](#-测试)
 [![τ-bench](https://img.shields.io/badge/τ--bench-80%25-blueviolet.svg)](#-评测)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
 
@@ -29,9 +29,11 @@
 - [快速开始](#-快速开始)
 - [API 参考](#-api-参考)
 - [评测](#-评测)
-- [配置项](#-配置项)
+- [崩溃恢复实验](#-崩溃恢复实验)
+- [不支持范围与已知局限](#️-不支持范围与已知局限)
+- [配置项](#️-配置项)
 - [项目结构](#-项目结构)
-- [Roadmap](#-roadmap)
+- [Roadmap](#️-roadmap)
 - [测试](#-测试)
 - [License](#-license)
 ---
@@ -77,8 +79,14 @@
 |---|---|
 | **超时结果二分** | 明确失败（`FAIL_BEFORE_SEND`）→ 安全重试 ≤3 次；**结果未知**（`TIMEOUT_UNKNOWN`）→ 禁止盲目重试，转对账 + 待补偿 |
 | **幂等执行** | 幂等键 `planId:stepId:attempt` 唯一索引，原生 `INSERT` 抢占；重复执行回放既有结果而非重复写库 |
-| **断点续跑** | `execution_log` 每步落账，`/api/executor/resume` 恢复中断计划 |
+| **断点续跑** | 事务边界落在**单次步骤尝试**上：每步的业务写 + 步骤状态 + `execution_log` + 幂等键同事务提交，崩溃后进度不丢；`/api/executor/resume` 从首个非 SUCCESS 步骤继续 |
 | **业务拒绝不重试** | 政策拒绝等终态失败（`FAILED_FINAL`）与瞬态失败严格区分 |
+
+> **关于事务边界**：如果整个计划共用一个事务，SIGKILL 会把已成功步骤的进度**和幂等键**一起回滚——
+> 幂等键消失意味着重试时没有任何东西能拦住重复执行。在写工具对接真实支付/物流的场景里，
+> 外部副作用已经发生、本地回滚不了，这就是实打实的重复退款。
+> 因此 `Executor` 刻意不加 `@Transactional`，由 `PlanStateWriter`（计划状态迁移）与
+> `StepRunner`（单次尝试）各自独立提交。这条性质有**真实 `kill -9` 实验**背书，见 [崩溃恢复实验](#-崩溃恢复实验)。
 
 ### 🧪 可评测性
 
@@ -200,6 +208,9 @@ mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8081
 | `POST` | `/api/plan/{id}/reject?userId=` | 拒绝计划 |
 | `POST` | `/api/plan/{id}/execute?userId=` | 执行已确认计划（幂等） |
 | `POST` | `/api/executor/resume` | 断点续跑（重启后恢复中断计划） |
+| `GET` | `/api/trace/{traceId}` | 只读路径轨迹回放（逐步模型/工具调用） |
+| `GET` | `/api/selftest` | 工具层全路径自测（**有副作用**，事务强制回滚） |
+| `POST` | `/api/fault?mode=` | 故障注入（**仅评测**）：`FAIL_BEFORE_SEND` / `TIMEOUT_UNKNOWN` / `HANG`；带 `planId`+`stepSeq` 可定向 |
 
 ---
 
@@ -243,8 +254,82 @@ V2 (完整版)          100%   ── 36/36
 
 ```bash
 cd eval
+# 36 例消融评测（本地脚本驱动，不需要外部基准）
 python3 run_eval.py --config V2 --split all --runs 1
+
+# τ-bench 子集：需要先拿到 sierra 官方源码
+git clone https://github.com/sierra-research/tau-bench /path/to/tau-bench
+export TAU_BENCH_ROOT=/path/to/tau-bench     # 或用 --tau-bench-root 传入
+export OPENAI_API_KEY=... OPENAI_API_BASE=...
+python3 tau_run.py --n 10 --start 0
 ```
+
+---
+
+## 💥 崩溃恢复实验
+
+**为什么要有这个实验**：断点续跑的正确性无法靠单元测试证明。测试跑在测试事务里，
+被测代码提交了什么会被一并回滚——用橡皮擦去证明铅笔写过字，结论没有意义。
+唯一可信的验证方式是真的把进程杀掉，再看库里剩下什么。
+
+```bash
+APP_START_CMD='mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8082' \
+  scripts/crash_recovery_probe.sh
+```
+
+脚本做的事：造一个两步计划 → 给第 2 步注入阻塞 → 发起执行 → 在第 1 步已提交、第 2 步阻塞中时
+`kill -9` → 重启 → `POST /api/executor/resume` → 逐条断言库内状态。
+
+实测结果（SIGKILL 打断执行中的计划）：
+
+| 观测点 | 崩溃后 | 续跑后 |
+|---|---|---|
+| `plans.status` | `EXECUTING`（否则 resume 扫不到它） | `COMPLETED` |
+| `plan_steps` | `0:SUCCESS`, `1:PENDING` | `0:SUCCESS`, `1:SUCCESS` |
+| `execution_log` | 第 1 步 1 条 | 第 1 步仍 **1 条**（未被重复执行） |
+| `idempotency_keys` | 第 1 步 1 条 | 第 1 步 1 条 |
+| 订单 | 第 1 步的取消**已生效** | 第 2 步的取消已生效 |
+| `/api/executor/resume` | — | `{"resumed":1}` |
+
+两条断言是重点：**崩溃不丢进度**（第 1 步的状态/日志/幂等键都是提交过的数据），
+**续跑不重跑已完成步骤**（第 1 步的执行日志不会变成 2 条）。
+
+配套脚本：
+- `scripts/crash_recovery_probe.sh` —— 上述实验，全部断言通过则退出码 0
+- `scripts/reset_demo_data.sh` —— 复位演示数据。种子数据用的是 `INSERT IGNORE`，
+  被改过的订单不会自动恢复，反复演示会导致"同一份代码、自测从 12/12 变 9/12"的假回归
+
+---
+
+## ⚠️ 不支持范围与已知局限
+
+本项目是一个**可运行的工程方案**，不是生产系统。以下是有意留下的边界，列出来是为了避免误判：
+
+**能力边界**
+
+| 项 | 现状 |
+|---|---|
+| 长期记忆 | **没有**。会话历史落在 `conversation_messages`，但没有跨会话的用户偏好/事实记忆层——这是有意不做的，避免为凑清单而虚设一层 |
+| 多步计划 | 执行器支持多步（`plan_steps` 唯一索引 `plan_id+seq`），但当前规划提示词在多数场景下产出单步计划 |
+| 意图路由 | 只有 `QUERY` / `WRITE` 二分，没有置信度阈值与人工转接 |
+| 评测样本 | 36 case 消融是单轮结果；τ-bench 只跑了 test 前 10 个任务 |
+| 用户模拟 | τ-bench 官方用 LLM 模拟用户，自评测用脚本驱动，交互深度有限 |
+
+**生产化缺口（MVP 边界内有意为之）**
+
+- 无真实支付/物流系统对接——写工具操作的是本地 `orders` 表。**因此"重复执行"在当前实现里
+  只是重复改一行状态，代价可逆**；一旦接上真实外部系统，幂等键与对账就是资金安全问题
+- 无多租户隔离、无鉴权（`userId` 从请求参数传入，仅用于归属校验，不是身份认证）
+- 无监控告警、无分布式锁；`resumeAll()` 是单实例扫描，多实例并发调用会重复接管同一计划
+- `/api/selftest` 是有副作用的 GET（会真的调用写工具，靠强制回滚兜底），生产不应这样暴露
+- `/api/fault` 故障注入端点无鉴权，生产必须移除
+
+**已知技术债**
+
+- 重试次数的持久化粒度是"单次尝试"：崩溃发生在一次尝试内部时，该次尝试的 attempt 计数会丢失，
+  续跑会从这次尝试重新开始。因为幂等键与业务写同事务提交，这里不会造成重复执行，
+  但会造成一次多余的尝试
+- 补偿任务（`RECONCILE_FAILED` 的记录）只有落账，没有自动重试的调度器
 
 ---
 
@@ -259,6 +344,20 @@ python3 run_eval.py --config V2 --split all --runs 1
 | `aftersale.agent.react-baseline-mode` | `false` | 消融：ReAct 基线模式（V0） |
 | `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | — | 环境变量注入，`.env` 不入库 |
 
+**只读 ReAct 循环的硬边界**（`aftersale.read.*`）。这些是安全边界而非实验开关，
+默认值即生产取值——循环控制权在项目自己的代码里，不依赖框架的迭代上限：
+
+| 配置 | 默认 | 说明 |
+|---|---|---|
+| `max-steps` | `6` | 单次只读请求最多几步（含模型调用与工具调用） |
+| `wall-clock-ms` | `30000` | 整次只读请求的墙钟上限 |
+| `token-budget` | `12000` | 单次请求累计 token 上限（prompt + completion） |
+| `call-timeout-ms` | `20000` | 单次模型调用的墙钟上限，防单点挂死 |
+| `retry-max` / `retry-base-backoff-ms` | `2` / `500` | 仅对限流与瞬态错误重试；退避 = base × 2^(n-1) + 抖动 |
+| `tool-output-max-chars` | `4000` | 单个工具返回的最大字符数，超出则包装成带 `truncated` 标记的合法 JSON |
+| `max-repeated-actions` | `2` | 同参数重复调用累计多少次后主动终止 |
+| `fabrication-guard-enabled` | `true` | 反幻觉闸门：答复中的订单号必须能在本回合事实来源里找到出处 |
+
 ---
 
 ## 📁 项目结构
@@ -266,28 +365,44 @@ python3 run_eval.py --config V2 --split all --runs 1
 ```
 aftersale-agent/
 ├── src/main/java/com/aftersale/
-│   ├── api/            # REST 控制器（chat / plan / execute / selftest / baseline）
-│   ├── agent/          # 编排、意图路由、规划、确认门、会话（LlmPort 可 stub 测试）
-│   ├── executor/       # 幂等执行器、写工具注册表、故障注入
+│   ├── api/            # REST 控制器（chat / plan / execute / trace / selftest / baseline）
+│   ├── agent/          # 编排、意图路由、规划、确认门、只读 ReAct 循环、反幻觉闸门、会话
+│   ├── executor/       # 执行器、单步尝试、计划状态落盘、写工具注册表、故障注入
 │   ├── tools/          # 6 个工具（3 读 3 写）、政策服务、统一错误码
 │   ├── domain/         # JPA 实体
 │   ├── enums/          # 订单状态 / 计划状态 / 执行状态 / 风险等级
 │   └── repo/           # Spring Data JPA
 ├── src/main/resources/ # schema.sql / data.sql / application.yml / static/index.html
-├── src/test/java/      # 验收测试（39 个，不依赖 LLM）
+├── src/test/java/      # 验收测试（49 个，不依赖 LLM）
 ├── eval/               # 评测 harness（cases.json + run_eval.py + τ-bench 驱动 + 报告）
+├── scripts/            # crash_recovery_probe.sh / reset_demo_data.sh
+├── docs/               # DESIGN.html（设计说明书）/ 架构图
 └── USE_GUIDE.md        # 使用与演示指南
 ```
+
+**想先理解设计再看代码**：从 [`docs/DESIGN.html`](docs/DESIGN.html) 开始——14 节，
+按「为什么这么设计 → 每个模块怎么实现」组织，含分层架构、幂等抢占、事务边界、崩溃恢复等图示。
+`TECH_SUMMARY.md` 则是同一套机制的**取舍与失败案例**视角（含被否掉的备选方案）。
+
+**执行器的三个类各管一件事**（事务边界的划分见「故障恢复」）：
+`Executor` 只做编排（无事务）、`StepRunner` 承担单次尝试的事务边界、`PlanStateWriter` 负责计划状态的独立提交。
 
 ---
 
 ## 🗺️ Roadmap
 
-- [ ] 接入真实支付 / 物流系统的适配层
-- [ ] 多租户与权限模型
-- [ ] 计划执行的分布式锁与跨实例幂等
-- [ ] 补偿任务调度（RECONCILE_FAILED 自动重试）
-- [ ] 可观测性：执行链路 Trace + 指标看板
+已完成（本轮）：
+- [x] 只读路径的控制环自研：步数/超时/token/去重/截断全部可测可控
+- [x] 读侧构造性反幻觉闸门（答复中的订单号必须可溯源）
+- [x] 事务边界下沉到单次步骤尝试：崩溃不丢进度、续跑不重跑（真实 `kill -9` 验证）
+
+待做：
+- [ ] 接入真实支付 / 物流系统的适配层（**接入后幂等键与对账从"状态可逆"升级为资金安全**）
+- [ ] 多租户与权限模型（当前 `userId` 只是归属校验，不是身份认证）
+- [ ] 计划执行的分布式锁与跨实例幂等（`resumeAll()` 目前是单实例扫描）
+- [ ] 补偿任务调度（`RECONCILE_FAILED` 记录已有，缺自动重试的调度器）
+- [ ] 指标看板与告警（链路 Trace 已有：`/api/trace/{traceId}`）
+- [ ] 长期记忆层（跨会话的用户偏好/事实），以及多步计划的规划能力
 - [ ] 更多域的工具集（售后以外的交易场景）
 
 ---
@@ -298,7 +413,13 @@ aftersale-agent/
 mvn test
 ```
 
-39 个单元测试，覆盖 schema / 工具契约 / 政策矩阵 / 意图路由 / 状态机 / 指纹失效 / 幂等 / 超时二分 / 断点续跑，**不依赖真实 LLM**（通过 `LlmPort` 注入 stub）。
+49 个测试，覆盖 schema / 工具契约 / 政策矩阵 / 意图路由 / 状态机 / 指纹失效 / 幂等 / 超时二分 /
+断点续跑 / 只读循环边界（步数、去重、截断、退避、幻觉工具名、反幻觉闸门）/ **崩溃恢复持久性**，
+**不依赖真实 LLM**（通过 `LlmPort` 注入 stub）。
+
+其中 `D5DurabilityTest` **刻意不加 `@Transactional`**：测试事务会把"被测代码提交了什么"
+一并回滚，而它要验证的正是提交是否真的发生。因此它自己负责精确回收数据。
+进程级崩溃的验证不在单测里，见 [崩溃恢复实验](#-崩溃恢复实验)。
 
 ---
 
