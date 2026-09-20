@@ -10,7 +10,7 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Spring AI](https://img.shields.io/badge/Spring%20AI-1.1-blue.svg)](https://spring.io/projects/spring-ai)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1.svg)](https://www.mysql.com/)
-[![Tests](https://img.shields.io/badge/tests-49%20passed-success.svg)](#-测试)
+[![Tests](https://img.shields.io/badge/tests-54%20passed-success.svg)](#-测试)
 [![τ-bench](https://img.shields.io/badge/τ--bench-80%25-blueviolet.svg)](#-评测)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
 
@@ -56,6 +56,9 @@
 
 - LLM 将用户输入分类为 `QUERY` / `WRITE`，解析失败**保守归 QUERY**（无副作用一侧）
 - 查询走只读 ReAct：订单详情、物流状态、售后政策即问即答
+- **支持不带订单号的指代式提问**："我最近买的那个咖啡机的物流"、"我上次买的蓝牙耳机"——先由
+  `listMyOrders` 按商品名关键词（或最近订单）定位，再查详情；模型不知道订单号时**不会反问用户要单号，
+  更不会编造**。关键词没命中时如实说明未找到，并列出最近订单供用户确认
 
 ### 📋 Plan-and-Execute 执行范式
 
@@ -123,11 +126,11 @@
                     ┌──────────────────┐   ┌─────────────────────┐
                     │   QueryAgent     │   │     PlanService      │
                     │  (只读 ReAct)    │   │  LLM → 结构化 Plan    │
-                    │  getOrder        │   │  白名单/归属/政策校验  │
-                    │  getLogistics    │   │  → 落库 PENDING       │
-                    │  getPolicy       │   └──────────┬──────────┘
-                    └──────────────────┘              │ 用户确认
-                                                      ▼
+                    │  listMyOrders    │   │  白名单/归属/政策校验  │
+                    │  getOrder        │   │  → 落库 PENDING       │
+                    │  getLogistics    │   └──────────┬──────────┘
+                    │  getPolicy       │              │ 用户确认
+                    └──────────────────┘              ▼
                                             ┌─────────────────────┐
                                             │     PlanManager      │
                                             │  状态机 + 指纹失效    │
@@ -219,6 +222,9 @@ mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8081
 ### 36 例消融评测
 
 评测集覆盖：查询 8 · 取消 8 · 退换 8 · 异常超时 6 · 越权/大额高风险 6。三组配置**同模型同温度**，唯一变量是编排与确认门：
+
+> **口径说明**：用例集已扩充 4 条「指代式查询」（无订单号、靠商品描述定位，如"我最近买的那个咖啡机的物流"），
+> 总数变为 40。下表的 V0/V1/V2 分数是**扩充前 36 例口径下的实测结果**，新增用例尚未并入重跑。
 
 | 配置 | 消融变量 | 完成率 | 高风险拦截 |
 |---|---|---|---|
@@ -368,12 +374,12 @@ aftersale-agent/
 │   ├── api/            # REST 控制器（chat / plan / execute / trace / selftest / baseline）
 │   ├── agent/          # 编排、意图路由、规划、确认门、只读 ReAct 循环、反幻觉闸门、会话
 │   ├── executor/       # 执行器、单步尝试、计划状态落盘、写工具注册表、故障注入
-│   ├── tools/          # 6 个工具（3 读 3 写）、政策服务、统一错误码
+│   ├── tools/          # 7 个工具（4 读 3 写）、政策服务、统一错误码
 │   ├── domain/         # JPA 实体
 │   ├── enums/          # 订单状态 / 计划状态 / 执行状态 / 风险等级
 │   └── repo/           # Spring Data JPA
 ├── src/main/resources/ # schema.sql / data.sql / application.yml / static/index.html
-├── src/test/java/      # 验收测试（49 个，不依赖 LLM）
+├── src/test/java/      # 验收测试（54 个，不依赖 LLM）
 ├── eval/               # 评测 harness（cases.json + run_eval.py + τ-bench 驱动 + 报告）
 ├── scripts/            # crash_recovery_probe.sh / reset_demo_data.sh
 ├── docs/               # DESIGN.html（设计说明书）/ 架构图
@@ -413,8 +419,8 @@ aftersale-agent/
 mvn test
 ```
 
-49 个测试，覆盖 schema / 工具契约 / 政策矩阵 / 意图路由 / 状态机 / 指纹失效 / 幂等 / 超时二分 /
-断点续跑 / 只读循环边界（步数、去重、截断、退避、幻觉工具名、反幻觉闸门）/ **崩溃恢复持久性**，
+54 个测试，覆盖 schema / 工具契约（含订单列表与关键词定位）/ 政策矩阵 / 意图路由 / 状态机 / 指纹失效 /
+幂等 / 超时二分 / 断点续跑 / 只读循环边界（步数、去重、截断、退避、幻觉工具名、反幻觉闸门）/ **崩溃恢复持久性**，
 **不依赖真实 LLM**（通过 `LlmPort` 注入 stub）。
 
 其中 `D5DurabilityTest` **刻意不加 `@Transactional`**：测试事务会把"被测代码提交了什么"

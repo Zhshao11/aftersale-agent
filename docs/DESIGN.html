@@ -210,7 +210,7 @@
     </p>
     <div class="metabar">
       <div><span>技术栈</span><b>Java 17 · Spring Boot 3.5.16 · Spring AI 1.1.8 · MySQL 8</b></div>
-      <div><span>代码规模</span><b>63 个主源码文件 · 6 个测试类 · 49 个用例</b></div>
+      <div><span>代码规模</span><b>64 个主源码文件 · 6 个测试类 · 54 个用例</b></div>
       <div><span>核心范式</span><b>Plan-and-Execute + 自研控制环</b></div>
       <div><span>文档基准</span><b>2026-09-19 源码</b></div>
     </div>
@@ -476,7 +476,8 @@
       <tbody>
         <tr>
           <td>P1</td><td><strong>能力最小化</strong></td>
-          <td>模型只拿到完成它那份工作所必需的能力，多一点都不给。落地：只挂载 3 个只读工具。</td>
+          <td>模型只拿到完成它那份工作所必需的能力，多一点都不给。落地：只挂载 4 个只读工具，全部
+            归属于"查"这一类，写能力一个都不给。</td>
         </tr>
         <tr>
           <td>P2</td><td><strong>能用代码就别用模型</strong></td>
@@ -576,7 +577,7 @@
         <!-- L4 工具层 -->
         <rect x="14" y="292" width="322" height="90" rx="9" fill="#edf7f5" stroke="#0f766e" stroke-width="1.4"/>
         <text x="30" y="314" font-size="11" font-weight="700" fill="#0f766e" letter-spacing="0.06em">只读工具 · tools.read（模型可见）</text>
-        <text x="30" y="338" font-size="11.5" fill="#0b3d37">getOrder · getLogistics · getPolicy</text>
+        <text x="30" y="338" font-size="11.5" fill="#0b3d37">listMyOrders · getOrder · getLogistics · getPolicy</text>
         <text x="30" y="360" font-size="11" fill="#3d4450">身份由 ToolContext 注入，模型无法伪造</text>
         <text x="30" y="376" font-size="11" fill="#3d4450">归属校验 + 参数校验在工具内部完成</text>
 
@@ -1560,12 +1561,13 @@ for (PlanStepEntity step : steps) {
         <line x1="134" y1="106" x2="178" y2="106" stroke="#0f766e" stroke-width="1.6" marker-end="url(#ar10)"/>
         <text x="156" y="98" text-anchor="middle" font-size="9.5" font-weight="700" fill="#0f766e">能看到</text>
 
-        <rect x="182" y="56" width="188" height="96" rx="9" fill="#edf7f5" stroke="#0f766e" stroke-width="1.4"/>
-        <text x="276" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="#0b3d37">ReadToolBundle</text>
-        <text x="276" y="98" text-anchor="middle" font-size="10.3" fill="#0b3d37">getOrder</text>
-        <text x="276" y="114" text-anchor="middle" font-size="10.3" fill="#0b3d37">getLogistics</text>
-        <text x="276" y="130" text-anchor="middle" font-size="10.3" fill="#0b3d37">getPolicy</text>
-        <text x="276" y="146" text-anchor="middle" font-size="9.8" fill="#6b7280">全部只读，无副作用</text>
+        <rect x="182" y="52" width="188" height="104" rx="9" fill="#edf7f5" stroke="#0f766e" stroke-width="1.4"/>
+        <text x="276" y="73" text-anchor="middle" font-size="11" font-weight="700" fill="#0b3d37">ReadToolBundle</text>
+        <text x="276" y="91" text-anchor="middle" font-size="10.3" fill="#0b3d37">listMyOrders</text>
+        <text x="276" y="106" text-anchor="middle" font-size="10.3" fill="#0b3d37">getOrder</text>
+        <text x="276" y="121" text-anchor="middle" font-size="10.3" fill="#0b3d37">getLogistics</text>
+        <text x="276" y="136" text-anchor="middle" font-size="10.3" fill="#0b3d37">getPolicy</text>
+        <text x="276" y="151" text-anchor="middle" font-size="9.5" fill="#6b7280">全部只读，无副作用</text>
 
         <!-- 不可见 -->
         <line x1="134" y1="132" x2="178" y2="132" stroke="#9f1239" stroke-width="1.6" stroke-dasharray="3 3"/>
@@ -1618,6 +1620,56 @@ static String userId(ToolContext ctx) {
     这个方法签名里<strong>根本没有 <code>userId</code> 这个参数</strong>，所以模型即使想传也无处可传。
     身份由编排层在调用前放进 <code>ToolContext</code>。
   </p>
+
+  <h4>连带的设计：用户不会主动报订单号</h4>
+  <p>
+    一开始的只读工具集只有 <code>getOrder</code> / <code>getLogistics</code> / <code>getPolicy</code>，
+    三个<strong>全都要求先有 <code>orderNo</code></strong>。这在真实客服场景里是不成立的：
+    用户说"我最近买的那个咖啡机的物流"，不会附带订单号。原来的做法是模型反问用户要单号——
+    但我们实测发现更糟的情况：模型<strong>不反问，直接编一个订单号</strong>（它会拿上下文里出现过的单号凑），
+    然后被反幻觉闸门拦下，用户拿到一句"抱歉没能确认到"。链路是通的，能力是缺的。
+  </p>
+  <p>
+    补的是 <code>listMyOrders</code>。它的定位很关键：<strong>它是"索引"，不是"详情"</strong>。
+    工具只回答"这个用户有哪些订单"（按时间倒序，带商品名/状态/金额/下单时间），
+    <strong>不替模型判断"哪个是用户说的那个"</strong>——那一步是语义判断，是模型该做的事。
+  </p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:150px">设计选择</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>关键词过滤放在<strong>工具里</strong>，<br>但"选哪一单"留给模型</td>
+          <td>过滤是确定性字符串匹配（代码更可靠）；而"蓝牙耳机"可能指"无线蓝牙耳机"或"降噪头戴耳机"，
+            这需要语义判断。实测模型会主动列出候选让用户确认，而不是猜一个。</td>
+        </tr>
+        <tr>
+          <td>关键词<strong>没命中不返回空</strong>，<br>退回最近 N 条 + <code>note</code> 说明</td>
+          <td>用户对商品的称呼常与系统记录不一致（"那个咖啡机" vs "全自动咖啡机"）。
+            返回空会让模型误判"用户没有这个订单"；退回最近订单则给了模型纠错的机会。</td>
+        </tr>
+        <tr>
+          <td>条数硬上限 20，默认 5</td>
+          <td>这是给模型做指代消解用的，不是导出历史。上限防止把上下文塞满、挤掉其他信息。</td>
+        </tr>
+        <tr>
+          <td><code>limit</code> 非法值退化为默认，<br>不报错</td>
+          <td>查询类参数不值得让整次调用失败。写路径的参数校验才必须严格。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    权限边界与其它读工具一致：<code>userId</code> 同样从 <code>ToolContext</code> 注入，
+    <strong>签名里没有这个参数</strong>，所以模型无法"查别人的订单列表"。
+  </p>
+  <div class="callout why">
+    <b>实测效果</b>
+    「查一下我最近买的那个咖啡机的物流」→ 3 步完成：<code>listMyOrders(keyword=咖啡机)</code> 命中
+    <code>ORD202609050002</code> → <code>getLogistics</code> → 答"运输中"。
+    「我上次买的蓝牙耳机」→ 命中 2 单，模型列出候选请用户确认。
+    「我买的那个电饭煲」→ 如实说没找到并列出最近订单，<strong>没有编造</strong>。
+  </div>
 
   <h3>7.3 保证二：读侧反幻觉闸门</h3>
   <p>

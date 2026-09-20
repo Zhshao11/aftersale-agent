@@ -1,6 +1,6 @@
 # 售后订单智能处理 Agent —— 技术总结
 
-> 配套仓库：`aftersale-agent/`（49 个单元测试全绿，36 case 消融评测 + τ-bench 跑分）
+> 配套仓库：`aftersale-agent/`（54 个单元测试全绿，40 case 消融评测 + τ-bench 跑分）
 
 ---
 
@@ -133,6 +133,10 @@ idempotency_keys(idempotency_key UNIQUE)  ← planId:stepId:attempt
 
 36 case = 查询 8 + 取消 8 + 退换 8 + 异常超时 6 + 越权高风险 6（开发集 27 + 留出集 9）。全部基于 glm-5.3 同模型同温度，case 间自动复位数据库。
 
+> **口径说明**：用例集现已扩充 4 条「指代式查询」（无订单号，靠商品描述定位，见 `eval/cases.json` 的 Q9–Q12），
+> 用例总数 40。表中 V0/V1/V2 的分数是**扩充前 36 case 口径下的实测结果**，尚未重跑；
+> 新增用例的验证见 `D1AcceptanceTest` 的工具契约测试与下表下方的端到端实测记录。
+
 ### 4.2 归因链
 
 - **V0 → V1（+8.6pp）**：故障恢复从"LLM 临场判断"上移为确定性执行器。V0 在"明确失败重试"场景多轮对话后 LLM 偏离任务导致订单未达终态；V1/V2 由 Executor 幂等重试全部自愈
@@ -145,7 +149,7 @@ idempotency_keys(idempotency_key UNIQUE)  ← planId:stepId:attempt
 
 ### 4.4 评测基建（可复现）
 
-- `eval/cases.json`：36 case 定义（每 case 带 pass 条件）
+- `eval/cases.json`：40 case 定义（每 case 带 pass 条件；含 4 条指代式查询，用于回归"自然语言定位订单"）
 - `eval/run_eval.py`：HTTP harness，每 case 自动 `reset_db()`，三块指标（业务/故障/拦截）分开报告
 - 报告：`eval/EVAL_REPORT.md` + case 级明细 JSON
 
@@ -203,7 +207,7 @@ api/ChatController ──▶ agent/AgentOrchestrator ──▶ IntentRouter(LLM 
                                                   └─ WriteToolRegistry（写工具注册表）
 ```
 
-63 个 Java 文件；测试 49 个（D1 schema/工具契约 7 + D2 意图路由 5 + D3 规划/确认门 18 + D4 执行器 9 + D5 持久性 2 + ReadLoop 循环边界 8），全部不依赖 LLM，可离线跑（`mvn test`）。
+64 个 Java 文件；测试 54 个（D1 schema/工具契约 12 + D2 意图路由 5 + D3 规划/确认门 18 + D4 执行器 9 + D5 持久性 2 + ReadLoop 循环边界 8），全部不依赖 LLM，可离线跑（`mvn test`）。
 
 ---
 
