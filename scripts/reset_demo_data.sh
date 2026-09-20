@@ -29,8 +29,15 @@ if [[ ! -f "$DATA_SQL" ]]; then
 fi
 
 # 不带参数时从 stdin 读 SQL；带参数时直接透传（如 mysql_exec -e "SELECT 1"）
+#
+# --default-character-set=utf8mb4 是必须的，不是可选优化：
+#   容器内 mysql 客户端的默认字符集是 latin1，而 data.sql 是 UTF-8 文件。
+#   不带这个参数重放种子数据，UTF-8 字节会被当 latin1 解释后再编码成 utf8mb4 存进库，
+#   每个中文变成 3 个乱码字符（"全自动咖啡机" → 18 字符的 "å…¨è‡ªåŠ¨å’–å•¡æœº"），
+#   不可逆。表现是：订单号能查到，但按商品名（"咖啡机"）永远搜不到。
 mysql_exec() {
-  docker exec -i "$MYSQL_CONTAINER" mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -N -B "$DB" "$@" 2>/dev/null
+  docker exec -i "$MYSQL_CONTAINER" mysql --default-character-set=utf8mb4 \
+    -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -N -B "$DB" "$@" 2>/dev/null
 }
 
 echo "==> 清空运行时数据（plans / plan_steps / execution_log / idempotency_keys / agent_trace / conversations / orders）"
@@ -48,9 +55,17 @@ SET FOREIGN_KEY_CHECKS = 1;
 SQL
 
 echo "==> 重放种子数据 $DATA_SQL"
-docker exec -i "$MYSQL_CONTAINER" mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$DB" 2>/dev/null < "$DATA_SQL"
+docker exec -i "$MYSQL_CONTAINER" mysql --default-character-set=utf8mb4 \
+  -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$DB" 2>/dev/null < "$DATA_SQL"
 
 echo "==> 复位后订单状态"
 mysql_exec -e "SELECT order_no, user_id, status FROM orders ORDER BY order_no;"
+
+# 字符集自检：中文商品名必须能原样读出，否则说明灌数时又踩了 latin1 客户端那个坑
+BAD=$(mysql_exec -e "SELECT COUNT(*) FROM orders WHERE item_name LIKE '%Ã%' OR item_name LIKE '%å%';" | head -1)
+if [[ "${BAD:-0}" != "0" ]]; then
+  echo "!! 警告：订单商品名存在乱码（疑似字符集双重编码），请检查灌数方式是否带 --default-character-set=utf8mb4" >&2
+  exit 1
+fi
 
 echo "==> 完成。若应用正在运行，其连接池里的数据已是新的，无需重启。"

@@ -2,7 +2,10 @@ spring:
   application:
     name: aftersale-agent
   datasource:
-    url: jdbc:mysql://localhost:3306/aftersale?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    # 字符集写 UTF-8（Java 字符集名），不要写 utf8mb4——Connector/J 只认 Java 名字，
+# 传 'utf8mb4' 会直接报 Unsupported character encoding 起不来。
+    # connectionCollation 才是选 MySQL 侧排序规则的位置，这里显式钉到 utf8mb4，与建表一致。
+    url: jdbc:mysql://localhost:3306/aftersale?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_0900_ai_ci&serverTimezone=Asia/Shanghai
     username: root
     password: root123
     driver-class-name: com.mysql.cj.jdbc.Driver
