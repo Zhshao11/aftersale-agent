@@ -54,4 +54,15 @@ public class QueryAgent {
                                        String userMessage, List<Message> history) {
         return readLoop.run(userId, conversationId, SYSTEM, history, userMessage, readToolBundle);
     }
+
+    /**
+     * 复用编排层在请求入口生成的 traceId。
+     * 目的不是省一个 id，而是让"一次请求 = 一条轨迹"这条不变量对读写两条路径都成立——
+     * 否则按 conversationId 关联轨迹时，写路径的 INTENT/PLAN 节点和只读路径的 MODEL/TOOL
+     * 节点会因为 id 生成时机不同而拼不回同一个请求。
+     */
+    public ReadLoop.ReadOutcome answer(String userId, Long conversationId,
+                                       String userMessage, List<Message> history, String traceId) {
+        return readLoop.run(userId, conversationId, SYSTEM, history, userMessage, readToolBundle, traceId);
+    }
 }

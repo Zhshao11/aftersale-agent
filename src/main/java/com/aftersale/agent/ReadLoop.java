@@ -127,8 +127,22 @@ public class ReadLoop {
 
     public ReadOutcome run(String userId, Long conversationId, String systemPrompt,
                            List<Message> history, String userMessage, Object toolBundle) {
+        return run(userId, conversationId, systemPrompt, history, userMessage, toolBundle, null);
+    }
+
+    /**
+     * 带外部 traceId 的重载：编排层在**请求入口**生成 traceId 后传入，
+     * 就能在请求还在跑的时候按 traceId 查轨迹（"边跑边看"）——
+     * 否则 traceId 只在请求内部存在，客户端要等整轮结束才拿得到，实时进度无从谈起。
+     *
+     * {@code externalTraceId} 为 null 时行为与旧签名完全一致（自行生成）。
+     */
+    public ReadOutcome run(String userId, Long conversationId, String systemPrompt,
+                           List<Message> history, String userMessage, Object toolBundle,
+                           String externalTraceId) {
         AgentProps.Read cfg = props.read();
-        String traceId = newTraceId();
+        String traceId = externalTraceId == null || externalTraceId.isBlank()
+                ? newTraceId() : externalTraceId;
         long startedAt = System.currentTimeMillis();
         long deadline = startedAt + cfg.wallClockMs();
 
@@ -169,6 +183,15 @@ public class ReadLoop {
 
             stepsUsed++;
             long stepStart = System.currentTimeMillis();
+
+            // 「已发出、尚未返回」标记。模型调用是这条流水线里最长的一段（实测单次 10~30s），
+            // 原先只有"返回后"一条记录，于是前端在两次落库之间会长时间停在同一行不动——
+            // 那正是"页面看起来没有在实时更新"的直接来源：不是没写，是粒度太粗。
+            // 这一行让"正在等模型"本身成为一个可见状态。
+            trace(new AgentStep(traceId, conversationId, userId, AgentStep.NODE_MODEL, stepsUsed,
+                    null, null, AgentStep.STATUS_RUNNING, null,
+                    "第 " + stepsUsed + " 轮模型调用已发出，等待返回", null, null, null, null));
+
             ModelCall call = callModel(cfg, systemPrompt, messages, toolBundle, toolContext,
                     deadline, traceId, conversationId, userId, stepsUsed);
             promptTokens += call.promptTokens();
@@ -508,7 +531,12 @@ public class ReadLoop {
         traceSink.record(step);
     }
 
-    private static String newTraceId() {
+    /**
+     * 生成新 traceId。
+     * 公开给编排层用——它需要在**请求入口**就生成 traceId，
+     * 这样才能在请求还在跑时按 id 查轨迹（见带 externalTraceId 的 run 重载）。
+     */
+    public static String newTraceId() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 16);
     }
 
