@@ -24,12 +24,21 @@
       "message": "订单 ORD202609050002 的东西到哪了？",
       "type": "query",
       "replyAny": [
-        "运输中",
-        "IN_TRANSIT",
-        "已发货"
+        "运输",
+        "在途",
+        "已发货",
+        "IN_TRANSIT"
+      ],
+      "replyNone": [
+        "未发货",
+        "尚未发货",
+        "已取消",
+        "已签收",
+        "已收货"
       ],
       "orderNo": "ORD202609050002",
-      "expectUnchanged": true
+      "expectUnchanged": true,
+      "_note": "判分口径修正（实测暴露的判分缺陷，不是 Agent 缺陷）：原先只认「运输中/已发货/IN_TRANSIT」，而模型答「已于 2026-09-08 21:04 发货，目前正在运输途中」——与种子数据（SHIPPED/IN_TRANSIT/shipped_at 2026-09-08 21:04）完全一致却被判失败。修正：正向放宽到「运输/在途」这类同义宽词，再用 replyNone 兜住答反的情况。残留局限：「已送达」不能当否定词（正确答案自己会说「暂时还没有送达信息」，措辞重叠），所以'既说已送达又顺带提到运输'的回答仍会漏判——这类否定语义应以订单状态断言为准，已列入待做"
     },
     {
       "id": "Q3",
@@ -555,6 +564,46 @@
       ],
       "expectUnchanged": true,
       "_note": "不存在的商品：考察是否如实说没找到，而不是硬凑一个订单给用户（幻觉高发点）"
+    },
+    {
+      "id": "C9",
+      "category": "cancel",
+      "split": "dev",
+      "userId": "U001",
+      "message": "我买的那副无线蓝牙耳机不想要了，帮我取消掉",
+      "type": "write",
+      "orderNo": "ORD20260901001",
+      "finalStatus": "CANCELLED",
+      "_note": "写路径指代用例（C1 的无订单号版本）：消息与对话历史里都不出现订单号，只能靠商品描述定位。旧实现在这里 extractOrderNo 拿不到号 → orderContext 为空 → PlanParseException → 兜底『计划生成失败』"
+    },
+    {
+      "id": "C10",
+      "category": "cancel",
+      "split": "holdout",
+      "userId": "U001",
+      "message": "我买的那个咖啡机到得太慢了，帮我取消这个订单",
+      "type": "policy_refusal",
+      "orderNo": "ORD202609050002",
+      "expectUnchanged": true,
+      "replyAny": [
+        "已发货",
+        "政策",
+        "无法",
+        "不能",
+        "不可以"
+      ],
+      "_note": "写路径指代用例（C3 的无订单号版本）：定位到订单后必须走到政策闸门。刻意不含『抱歉』——旧实现的兜底话术『抱歉，计划生成失败』含该词，会把回归误判成通过"
+    },
+    {
+      "id": "R9",
+      "category": "refund_exchange",
+      "split": "dev",
+      "userId": "U001",
+      "message": "我买的那个护眼台灯不想要了，帮我退款",
+      "type": "write",
+      "orderNo": "ORD202609080005",
+      "finalStatus": "REFUNDED",
+      "_note": "写路径指代用例（R2 的无订单号版本）：DELIVERED 且在 7 天退款窗口内。与 R2 构成『有订单号 vs 无订单号、期望终态相同』的对照对"
     }
   ]
 }

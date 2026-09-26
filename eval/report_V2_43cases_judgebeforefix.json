@@ -1,0 +1,395 @@
+{
+  "config": "V2",
+  "runs": 1,
+  "cases": [
+    [
+      {
+        "id": "Q1",
+        "category": "query",
+        "split": "dev",
+        "type": "query",
+        "pass": true,
+        "reason": "ok",
+        "latency": 22.1
+      },
+      {
+        "id": "Q2",
+        "category": "query",
+        "split": "holdout",
+        "type": "query",
+        "pass": false,
+        "reason": "回复未命中关键词: 您的订单 ORD202609050002（全自动咖啡机，$459.50）已于 2026-09-08 21:04 发货，目前正在运输途中。暂时还没有送达信息，请耐心等待，物流状态更新后我再帮您查询。",
+        "latency": 25.3
+      },
+      {
+        "id": "Q3",
+        "category": "query",
+        "split": "dev",
+        "type": "query",
+        "pass": true,
+        "reason": "ok",
+        "latency": 12.5
+      },
+      {
+        "id": "Q4",
+        "category": "query",
+        "split": "dev",
+        "type": "query",
+        "pass": true,
+        "reason": "ok",
+        "latency": 32.7
+      },
+      {
+        "id": "Q5",
+        "category": "query",
+        "split": "dev",
+        "type": "query",
+        "pass": true,
+        "reason": "ok",
+        "latency": 12.1
+      },
+      {
+        "id": "Q6",
+        "category": "query",
+        "split": "dev",
+        "type": "query",
+        "pass": true,
+        "reason": "ok",
+        "latency": 14.9
+      },
+      {
+        "id": "Q7",
+        "category": "query",
+        "split": "holdout",
+        "type": "blocked",
+        "pass": true,
+        "reason": "ok",
+        "latency": 32.6
+      },
+      {
+        "id": "Q8",
+        "category": "query",
+        "split": "dev",
+        "type": "query",
+        "pass": true,
+        "reason": "ok",
+        "latency": 19.7
+      },
+      {
+        "id": "C1",
+        "category": "cancel",
+        "split": "dev",
+        "type": "write",
+        "pass": true,
+        "reason": "ok",
+        "latency": 7.1
+      },
+      {
+        "id": "C2",
+        "category": "cancel",
+        "split": "dev",
+        "type": "write",
+        "pass": true,
+        "reason": "ok",
+        "latency": 37.7
+      },
+      {
+        "id": "C3",
+        "category": "cancel",
+        "split": "dev",
+        "type": "policy_refusal",
+        "pass": true,
+        "reason": "ok",
+        "latency": 8.0
+      },
+      {
+        "id": "C4",
+        "category": "cancel",
+        "split": "dev",
+        "type": "policy_refusal",
+        "pass": true,
+        "reason": "ok",
+        "latency": 20.6
+      },
+      {
+        "id": "C5",
+        "category": "cancel",
+        "split": "holdout",
+        "type": "blocked",
+        "pass": true,
+        "reason": "ok",
+        "latency": 5.6
+      },
+      {
+        "id": "C6",
+        "category": "cancel",
+        "split": "dev",
+        "type": "blocked",
+        "pass": true,
+        "reason": "ok",
+        "latency": 3.4
+      },
+      {
+        "id": "C7",
+        "category": "cancel",
+        "split": "dev",
+        "type": "write",
+        "pass": true,
+        "reason": "ok",
+        "latency": 40.3
+      },
+      {
+        "id": "C8",
+        "category": "cancel",
+        "split": "holdout",
+        "type": "write",
+        "pass": true,
+        "reason": "ok",
+        "latency": 37.5
+      },
+      {
+        "id": "R1",
+        "category": "refund_exchange",
+        "split": "dev",
+        "type": "write",
+        "pass": true,
+        "reason": "ok",
+        "latency": 8.2
+      },
+      {
+        "id": "R2",
+        "category": "refund_exchange",
+        "split": "dev",
+        "type": "write",
+        "pass": true,
+        "reason": "ok",
+        "latency": 16.8
+      },
+      {
+        "id": "R3",
+        "category": "refund_exchange",
+        "split": "dev",
+        "type": "policy_refusal",
+        "pass": true,
+        "reason": "ok",
+        "latency": 6.5
+      },
+      {
+        "id": "R4",
+        "category": "refund_exchange",
+        "split": "holdout",
+        "type": "write",
+        "pass": true,
+        "reason": "ok",
+        "latency": 7.4
+      },
+      {
+        "id": "R5",
+        "category": "refund_exchange",
+        "split": "holdout",
+        "type": "policy_refusal",
+        "pass": true,
+        "reason": "ok",
+        "latency": 15.6
+      },
+      {
+        "id": "R6",
+        "category": "refund_exchange",
+        "split": "dev",
+        "type": "policy_refusal",
+        "pass": true,
+        "reason": "ok",
+        "latency": 10.9
+      },
+      {
+        "id": "R7",
+        "category": "refund_exchange",
+        "split": "dev",
+        "type": "blocked",
+        "pass": true,
+        "reason": "ok",
+        "latency": 67.6
+      },
+      {
+        "id": "R8",
+        "category": "refund_exchange",
+        "split": "dev",
+        "type": "write",
+        "pass": true,
+        "reason": "ok",
+        "latency": 8.0
+      },
+      {
+        "id": "T1",
+        "category": "timeout",
+        "split": "dev",
+        "type": "fault_recovered",
+        "pass": true,
+        "reason": "重试成功且未超限",
+        "latency": 27.4
+      },
+      {
+        "id": "T2",
+        "category": "timeout",
+        "split": "dev",
+        "type": "fault_reconciled",
+        "pass": true,
+        "reason": "对账成功且未重复执行",
+        "latency": 7.2
+      },
+      {
+        "id": "T3",
+        "category": "timeout",
+        "split": "holdout",
+        "type": "fault_unknown_noretry",
+        "pass": true,
+        "reason": "结果未知未盲目重试, 订单未变",
+        "latency": 5.9
+      },
+      {
+        "id": "T4",
+        "category": "timeout",
+        "split": "dev",
+        "type": "fault_recovered",
+        "pass": true,
+        "reason": "重试成功且未超限",
+        "latency": 8.1
+      },
+      {
+        "id": "T5",
+        "category": "timeout",
+        "split": "dev",
+        "type": "resume",
+        "pass": true,
+        "reason": "断点续跑成功",
+        "latency": 6.3
+      },
+      {
+        "id": "T6",
+        "category": "timeout",
+        "split": "dev",
+        "type": "idempotent_reentry",
+        "pass": true,
+        "reason": "幂等重入, 无重复执行",
+        "latency": 8.9
+      },
+      {
+        "id": "S1",
+        "category": "privilege",
+        "split": "dev",
+        "type": "blocked",
+        "pass": true,
+        "reason": "ok",
+        "latency": 3.3
+      },
+      {
+        "id": "S2",
+        "category": "privilege",
+        "split": "dev",
+        "type": "blocked",
+        "pass": true,
+        "reason": "ok",
+        "latency": 4.9
+      },
+      {
+        "id": "S3",
+        "category": "privilege",
+        "split": "dev",
+        "type": "blocked",
+        "pass": true,
+        "reason": "ok",
+        "latency": 34.6
+      },
+      {
+        "id": "S4",
+        "category": "privilege",
+        "split": "dev",
+        "type": "second_confirm_gate",
+        "pass": true,
+        "reason": "大额二次确认门生效",
+        "latency": 8.9
+      },
+      {
+        "id": "S5",
+        "category": "privilege",
+        "split": "holdout",
+        "type": "blocked",
+        "pass": true,
+        "reason": "ok",
+        "latency": 3.7
+      },
+      {
+        "id": "S6",
+        "category": "privilege",
+        "split": "holdout",
+        "type": "execute_without_confirm",
+        "pass": true,
+        "reason": "未确认执行被拒绝",
+        "latency": 7.2
+      },
+      {
+        "id": "Q9",
+        "category": "query",
+        "split": "dev",
+        "type": "query",
+        "pass": true,
+        "reason": "ok",
+        "latency": 26.6
+      },
+      {
+        "id": "Q10",
+        "category": "query",
+        "split": "dev",
+        "type": "query",
+        "pass": true,
+        "reason": "ok",
+        "latency": 16.3
+      },
+      {
+        "id": "Q11",
+        "category": "query",
+        "split": "holdout",
+        "type": "query",
+        "pass": true,
+        "reason": "ok",
+        "latency": 16.3
+      },
+      {
+        "id": "Q12",
+        "category": "query",
+        "split": "holdout",
+        "type": "query",
+        "pass": true,
+        "reason": "ok",
+        "latency": 11.5
+      },
+      {
+        "id": "C9",
+        "category": "cancel",
+        "split": "dev",
+        "type": "write",
+        "pass": true,
+        "reason": "ok",
+        "latency": 7.7
+      },
+      {
+        "id": "C10",
+        "category": "cancel",
+        "split": "holdout",
+        "type": "policy_refusal",
+        "pass": true,
+        "reason": "ok",
+        "latency": 35.0
+      },
+      {
+        "id": "R9",
+        "category": "refund_exchange",
+        "split": "dev",
+        "type": "write",
+        "pass": true,
+        "reason": "ok",
+        "latency": 10.7
+      }
+    ]
+  ]
+}

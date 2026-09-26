@@ -9,12 +9,13 @@
   V2 完整版 默认                           Plan-and-Execute + Plan 级确认 + 大额二次确认
 
 指标分三块独立报告（不混总分）:
-  业务完成率   query/cancel/refund_exchange 24 case
+  业务完成率   query/cancel/refund_exchange 27 case
   故障处理通过率 timeout 6 case（V0 下 T5 记 N/A）
   权限拦截率    privilege 6 case
 """
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
@@ -22,6 +23,9 @@ import urllib.request
 import urllib.error
 
 BASE = "http://localhost:8081"
+
+# 判分归一化用：日期与「日期 时:分(:秒)」
+_DATE_TIME = re.compile(r"\d{4}-\d{2}-\d{2}(\s+\d{2}:\d{2}(:\d{2})?)?")
 SEED_STATUS = {
     "ORD20260901001": "PAID", "ORD202609050002": "SHIPPED", "ORD20260910003": "DELIVERED",
     "ORD202608010004": "DELIVERED", "ORD202609080005": "DELIVERED", "ORD202609020008": "CANCELLED",
@@ -62,7 +66,11 @@ def reset_db():
     for no, st in SEED_STATUS.items():
         sql(f"UPDATE orders SET status='{st}' WHERE order_no='{no}'")
     sql("TRUNCATE plans; TRUNCATE plan_steps; TRUNCATE execution_log; "
-        "TRUNCATE idempotency_keys; TRUNCATE conversations; TRUNCATE conversation_messages;")
+        "TRUNCATE idempotency_keys; TRUNCATE conversations; TRUNCATE conversation_messages; "
+        # agent_trace 也要清：conversations 被清空后，上一轮的轨迹行会指向已不存在的会话，
+        # 于是"按 conversationId 关联轨迹"在跨用例时得到的是悬空引用。
+        # 观测数据不影响判定，但会污染排障——一次跑动应该只留下一轮轨迹。
+        "TRUNCATE agent_trace;")
 
 
 def exec_log_success_count():
@@ -80,7 +88,35 @@ def chat(user_id, message, conv_id=None):
 def contains_any(reply, keywords):
     if not reply or not keywords:
         return True
-    return any(k in reply for k in keywords)
+    r = normalize(reply)
+    return any(normalize(k) in r for k in keywords)
+
+
+def contains_none(reply, keywords):
+    """否定约束：命中任一关键词即判失败。缺失时视为通过（向后兼容）。"""
+    if not reply or not keywords:
+        return True
+    r = normalize(reply)
+    return not any(normalize(k) in r for k in keywords)
+
+
+def normalize(text):
+    """判分前的归一化：去掉时间戳、合并所有空白。
+
+    解决的是**一类**判分假失败：模型回答得比预期更具体时，插进去的时间戳会把
+    一个关键词从中间切开。例如正确答案「已发货」被写成
+    「已于 2026-09-08 21:04 发货」——判分口径不该惩罚"说得更具体"。
+
+    注意它**不能**解决措辞差异（「已于 X 发货」里那个「于」是句式的一部分，
+    去掉时间戳也变不成「已发货」）。措辞差异要靠 `replyAny` 覆盖同义表达
+    并用 `replyNone` 兜住"放宽关键词会招来的假通过"，两件事分开处理。
+
+    只归一化时间与空白，不归一化数字——金额/天数类关键词（89.99 / 7 / 15）
+    本身就是判据，去掉数字会把所有用例都判成通过。
+    """
+    if text is None:
+        return ""
+    return re.sub(r"\s+", "", _DATE_TIME.sub("", str(text)))
 
 
 # ---------------- V2/V1（Plan 模式）流程 ----------------
@@ -228,6 +264,10 @@ def finish_no_write(case, reply):
     ok = contains_any(reply, case.get("replyAny"))
     if not ok:
         return {"pass": False, "reason": f"回复未命中关键词: {reply[:120]}"}
+    # 否定约束：放宽 replyAny 覆盖同义表达之后，用它兜住"答反了也能蒙对"的情况。
+    # 例：Q2 问"到哪了"，正向允许「运输」这类宽词，负向必须排除「尚未发货/已取消/已送达」。
+    if not contains_none(reply, case.get("replyNone")):
+        return {"pass": False, "reason": f"回复命中否定关键词: {reply[:120]}"}
     if case.get("orderNo"):
         want = case.get("expectStatus") or (SEED_STATUS[case["orderNo"]] if case.get("expectUnchanged") else None)
         cur = order_status(case["orderNo"])
@@ -296,6 +336,8 @@ def main():
     ap.add_argument("--config", default="V2", choices=["V0", "V1", "V2"])
     ap.add_argument("--runs", type=int, default=1)
     ap.add_argument("--split", default="all", choices=["dev", "holdout", "all"])
+    ap.add_argument("--ids", default=None,
+                    help="只跑指定用例（逗号分隔，如 C9,C10,R9）——迭代单个新能力时不必跑全量")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
     BASE = args.base
@@ -304,6 +346,15 @@ def main():
         cases = json.load(f)["cases"]
     if args.split != "all":
         cases = [c for c in cases if c["split"] == args.split]
+    if args.ids:
+        want = {i.strip() for i in args.ids.split(",") if i.strip()}
+        cases = [c for c in cases if c["id"] in want]
+        missing = want - {c["id"] for c in cases}
+        if missing:
+            print(f"注意：用例 id 不存在 {sorted(missing)}", file=sys.stderr)
+    if not cases:
+        print("过滤后没有可跑的用例", file=sys.stderr)
+        sys.exit(1)
 
     if http("GET", "/actuator/health").get("status") != "UP":
         print("应用未就绪", file=sys.stderr)
