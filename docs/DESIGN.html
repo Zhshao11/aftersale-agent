@@ -2306,7 +2306,7 @@ src/test/java/com/aftersale/
     <table>
       <thead><tr><th style="width:250px">文件</th><th>作用</th></tr></thead>
       <tbody>
-        <tr><td><code>eval/cases.json</code></td><td>36 条评测任务定义，每条带 pass 条件</td></tr>
+        <tr><td><code>eval/cases.json</code></td><td>43 条评测任务定义，每条带 pass 条件</td></tr>
         <tr><td><code>eval/run_eval.py</code></td><td>HTTP 评测驱动，每 case 前自动复位数据库</td></tr>
         <tr><td><code>eval/tau_run.py</code></td><td>τ-bench 基准驱动</td></tr>
         <tr><td><code>eval/EVAL_REPORT.md</code></td><td>消融评测报告（三配置对照 + 逐案归因）</td></tr>
@@ -2409,7 +2409,7 @@ src/test/java/com/aftersale/
 
   <div class="tbl">
     <table>
-      <caption>三个配置的对照（36 条任务）</caption>
+      <caption>三个配置的对照（43 条任务）</caption>
       <thead>
         <tr><th style="width:110px">配置</th><th style="width:220px">消融了什么</th><th style="width:110px">完成率</th><th>高额操作拦截</th></tr>
       </thead>
@@ -2417,19 +2417,19 @@ src/test/java/com/aftersale/
         <tr>
           <td><strong>V0 基线</strong></td>
           <td>变成单环 ReAct 直连，读写工具全挂载</td>
-          <td>31/35</td>
+          <td>36/42</td>
           <td>5/6（缺大额二次确认）</td>
         </tr>
         <tr>
           <td><strong>V1</strong></td>
           <td>去掉 Plan 级确认门</td>
-          <td>35/36</td>
+          <td>42/43</td>
           <td>5/6（同上）</td>
         </tr>
         <tr>
           <td><strong>V2 完整版</strong></td>
           <td>—</td>
-          <td><strong>36/36</strong></td>
+          <td><strong>42/43</strong></td>
           <td><strong>6/6</strong></td>
         </tr>
       </tbody>
@@ -2439,9 +2439,12 @@ src/test/java/com/aftersale/
   <p>两个值得注意的结论：</p>
   <ul>
     <li>
-      <strong>越权拦截在三配置下都是 100%。</strong>这恰好印证了「安全是构造性保证」——
-      因为归属与政策校验在工具层是确定性代码，不依赖模型自觉，所以连基线版本也拦得住。
-      V2 的增量来自「确认门」和「规划校验」，不是「一个更听话的模型」。
+      <strong>写操作的安全性在三配置下都成立。</strong>归属与政策校验在工具层是确定性代码，
+      不依赖模型自觉，所以连基线版本也拦得住——V2 的增量来自「确认门」和「规划校验」，
+      不是「一个更听话的模型」。
+      <br><strong>但要注意措辞</strong>：V0 的校验发生在<em>确认之后</em>，
+      所以它会先请用户确认、确认完才说「不允许」——用户被许了兑现不了的承诺。
+      这一点在 43 条用例里暴露为 C3/C4/C6 的失败（且是概率性的，复跑大多通过）。
     </li>
     <li>
       <strong>V0 的失败集中在故障恢复场景。</strong>基线把「失败了怎么重试」交给模型在对话里临场判断，
@@ -2453,10 +2456,13 @@ src/test/java/com/aftersale/
   <div class="callout co-limit">
     <span class="lbl">这个评测的局限（必须说明）</span>
     <ul style="margin-bottom:0">
-      <li><strong>V1 → V2 的 +2.8pp 是四项机制的合力</strong>（确认门 + 大额分级 + 指纹失效 + 断点续跑），
-        四项没有单独关闭做过对照，所以<strong>拆不出单项贡献</strong>。要做单项归因，需要给指纹失效和断点续跑各补一个消融开关，跑六组配置。</li>
-      <li>36 条样本属于小样本，判定部分依赖关键词匹配，报告里已如实标注。</li>
-      <li>报告记录的是单轮结果，LLM 有随机性，补跑取均值会更稳。</li>
+      <li><strong>V1 → V2 的增量是多项机制的合力</strong>（确认门 + 大额分级 + 指纹失效 + 断点续跑），
+        没有单独关闭做过对照，所以<strong>拆不出单项贡献</strong>。要做单项归因，需要给指纹失效和断点续跑各补一个消融开关，跑六组配置。</li>
+      <li><strong>43 例口径下 V1 与 V2 总分相同（都 42/43），但这不是「确认门零贡献」</strong>——
+        V1 挂的是真实缺陷 S4（正是消融变量本身），V2 挂的是判分缺陷 Q7（模型答得比期望更安全却被判失败）。两条失败不同类却互相抵消。<strong>总分相同比总分不同更需要逐条拆解。</strong></li>
+      <li><strong>单轮结果不可复现，已实测。</strong>V0 的 C3/C4/C6 在消融那轮三条全挂，定向复跑里 2 条自然通过（同代码、同用例、同配置）。机理已定位（V0 的校验在确认之后，回复措辞取决于 LLM 是否自愿先查），但它是概率性暴露。<strong>所以：排序可信，精确 pp 不可信，也不要跨口径相减。</strong></li>
+      <li><strong>三配置按配置串行跑，落在三个不同时间窗</strong>，而端点侧存在时间窗级漂移（同一 prompt 从 19.04s 漂到 2.77s）——漂移会被记成配置差异。修法是按用例交错跑。</li>
+      <li><strong>判定部分依赖关键词匹配，已实测出三类缺陷</strong>：肯定型假失败、<strong>否定型激励反转</strong>（对更安全的答法扣分，会反向指挥实现）、以及抖动。治本是断言化判分。</li>
     </ul>
   </div>
 </section>

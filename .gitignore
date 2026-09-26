@@ -8,10 +8,19 @@ logs/
 
 # 内部文档（不随代码公开）
 INTERVIEW_KIT.md
+# 个人材料：含个人用途的问答预演，不进仓库。
+docs/RESUME_ITEM.md
 # TECH_SUMMARY.md 已入库：其中的失败案例与架构取舍是项目的一部分，不该只存在于本地。
-# 技术问题过程日志：含自我剖析（"我原先的认知错在哪"）与面试素材，属内部文档。
+# 技术问题过程日志：含自我剖析（"我原先的认知错在哪"）等内部素材，属内部文档。
 # 若之后想把纯技术部分公开，可拆出 docs/DECISIONS.md（只保留 现象/根因/方案/验证），那条可入库。
 TECH_JOURNAL.md
 
 # 临时/锁定文件
 *.java-locked
+
+# Python 字节码缓存（脚本目录会生成）
+__pycache__/
+*.pyc
+
+# 单次探测的裸产物（内容已在 eval/report_*.json 覆盖，无脚本引用）
+report_write_referent.json
