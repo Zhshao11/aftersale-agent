@@ -11,11 +11,18 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 只读轨迹查询：GET /api/trace/{traceId}
+ * 轨迹查询：GET /api/trace/{traceId}
  *
  * 有了这个端点，"轨迹可回放"才不是一句自我声明——拿 chat 响应里的 traceId 直接查，
  * 就能看到每一步用了哪个工具、什么参数、成没成、花了多少 token 和毫秒。
- * 没有它，轨迹只是躺在数据库里的表，面试时你只能口头描述。
+ * 没有它，轨迹只是躺在数据库里的表，只能靠口头描述。
+ *
+ * 覆盖写成两条路径：只读路径记 MODEL/TOOL/TERMINAL，
+ * 写路径记 INTENT/PLAN/REFUSAL（写路径原先一行都不写，于是"这次写请求为什么被拒"查不到）。
+ *
+ * 另一个用途：请求进行中轮询。前端在发出 /api/chat 时自带 traceId，
+ * 于是可以在等模型返回的那 20~40 秒里不断查这个端点，把"正在定位订单/正在生成计划"
+ * 逐步显示出来——把不可见的等待变成可见的进度。
  */
 @RestController
 @RequestMapping("/api")

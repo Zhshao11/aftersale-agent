@@ -91,7 +91,41 @@
   #input:focus { outline: none; border-color: var(--primary); }
   #send { background: var(--primary); color: #fff; border: none; border-radius: 10px; padding: 10px 22px; font-size: 14px; cursor: pointer; font-weight: 500; }
   #send:disabled { opacity: .6; cursor: not-allowed; }
-  .typing { color: var(--sub); font-size: 12px; padding: 2px 4px; }
+  /* 思考过程面板：把 20~40 秒的等待从"一个转圈"变成"看得见的进度" */
+  .progress {
+    align-self: flex-start; max-width: 92%; min-width: 280px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 10px 14px; font-size: 12px; color: var(--sub);
+  }
+  .progress .head { display: flex; align-items: center; gap: 7px; font-weight: 600; color: var(--text); }
+  .spin {
+    flex: none; width: 11px; height: 11px; border: 2px solid var(--primary-weak);
+    border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .progress ol { list-style: none; margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+  .progress li { display: flex; gap: 7px; align-items: flex-start; line-height: 1.5; }
+  .progress li .dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--primary); margin-top: 6px; }
+  .progress li.FAILED .dot, .progress li.REFUSED .dot { background: var(--danger); }
+  .progress li .ms { margin-left: auto; color: #9aa0a8; font-size: 11px; padding-left: 10px; white-space: nowrap; }
+  /* 进行中的那一行：小转圈 + 正常字色，跟已完成的实心点区分开 */
+  .progress li.running { color: var(--text); }
+  .progress li .dot.mini-spin {
+    width: 9px; height: 9px; background: transparent; margin-top: 4px;
+    border: 2px solid var(--primary-weak); border-top-color: var(--primary);
+    animation: spin .7s linear infinite;
+  }
+  /* 首帧占位：请求刚发出、第一个步骤还没落库时，别让面板空着 */
+  .progress li.hint { color: var(--sub); font-style: italic; }
+  /* 实时计时：它保证"即使两次落库之间没有新步骤，面板也在动" */
+  .progress .clock {
+    margin-left: auto; font-size: 11px; color: var(--sub);
+    font-variant-numeric: tabular-nums;
+  }
+  .refusal-tag {
+    display: inline-block; font-size: 10px; font-weight: 600; padding: 1px 7px;
+    border-radius: 999px; background: #ffefe8; color: var(--danger);
+  }
   .examples { display: flex; gap: 8px; padding: 0 20px 10px; flex-wrap: wrap; }
   .chip {
     font-size: 12px; color: var(--primary); background: var(--primary-weak);
@@ -129,6 +163,8 @@
     <button class="chip" data-tpl="订单 ORD202609160012 耳机戴着不舒服，给我换一个新的">换货</button>
     <button class="chip" data-tpl="帮我取消订单 ORD202609060006">越权取消</button>
     <button class="chip" data-tpl="帮我取消订单 ORD202609150011，太贵了">$1599 高额</button>
+    <button class="chip" data-tpl="我买的那盏护眼台灯不想要了，帮我退款">无订单号退款</button>
+    <button class="chip" data-tpl="我买的那副无线蓝牙耳机不想要了，帮我取消掉">无订单号取消</button>
   </div>
   <div id="messages"></div>
   <div id="inputBar">
@@ -162,6 +198,93 @@
     return data;
   }
   function scrollBottom() { messages.scrollTop = messages.scrollHeight; }
+
+  // ---------- 思考过程（把等待变可见）----------
+  // 后端本来就在写 agent_trace，一个只读请求要 20~40 秒，前端却只有一个转圈。
+  // 这里让前端自带 traceId 发出请求，然后轮询 /api/trace/{traceId}，把已经落库的
+  // 步骤逐步显示出来——等待还在，但不再是"什么都没有发生"。
+  const NODE_LABEL = {
+    RECEIVED: '已收到请求', INTENT: '理解诉求', MODEL: '模型推理', TOOL: '调用工具',
+    PLAN: '生成执行计划', REFUSAL: '拒绝请求', TERMINAL: '收尾'
+  };
+  function nodeLabel(s) {
+    const base = NODE_LABEL[s.node] || s.node || '步骤';
+    return s.node === 'TOOL' && s.tool_name ? base + ' · ' + s.tool_name : base;
+  }
+
+  /**
+   * 同一 stepIndex 会有两行：RUNNING（已发起）与终态（已返回）。
+   *
+   * 轨迹表是**只追加**的——"进行中"只能用追加一行来表达，所以去重落在消费侧。
+   * 规则：RUNNING 只在它是**最后一行**时才显示为"进行中"；一旦被后续行覆盖就忽略它。
+   * 这样既能看到"模型调用进行中"，又不会在完成后留下一条假的"进行中"。
+   */
+  function visibleSteps(steps) {
+    const last = steps.length - 1;
+    return steps.filter((s, i) => s.status !== 'RUNNING' || i === last);
+  }
+
+  function newTraceId() {
+    const b = new Uint8Array(8);
+    if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(b);
+    else for (let i = 0; i < 8; i++) b[i] = Math.floor(Math.random() * 256);
+    return Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+  }
+
+  function createProgress() {
+    const box = document.createElement('div');
+    box.className = 'progress';
+    box.innerHTML = '<div class="head"><span class="spin"></span>' +
+      '<span class="title">Agent 思考中…</span><span class="clock">0.0s</span></div>' +
+      '<ol><li class="hint">已发送，等待后端受理…</li></ol>';
+    messages.appendChild(box); scrollBottom();
+
+    // 实时计时。这不只是装饰：两次落库之间可能隔 30 秒（一次模型调用），
+    // 单靠步骤列表会让人以为页面卡死了。秒表是**真实经过时间**，不是假进度条。
+    const t0 = Date.now();
+    const tick = () => {
+      const c = box.querySelector('.clock');
+      if (c) c.textContent = ((Date.now() - t0) / 1000).toFixed(1) + 's';
+    };
+    tick();
+    box._timer = setInterval(tick, 200);
+    return box;
+  }
+
+  function renderProgress(box, steps) {
+    const ol = box.querySelector('ol');
+    const shown = visibleSteps(steps);
+    if (!shown.length) {
+      ol.innerHTML = '<li class="hint">已发送，等待后端受理…</li>';
+      scrollBottom();
+      return;
+    }
+    ol.innerHTML = shown.map(s => {
+      const running = s.status === 'RUNNING';
+      const bad = s.status === 'FAILED' || s.status === 'REFUSED';
+      const cls = running ? ' class="running"'
+        : (bad ? ' class="' + esc(s.status) + '"' : '');
+      const dot = running ? '<span class="dot mini-spin"></span>' : '<span class="dot"></span>';
+      const detail = s.detail ? ' · ' + esc(String(s.detail).slice(0, 90)) : '';
+      const code = s.error_code ? ' [' + esc(s.error_code) + ']' : '';
+      const ms = (!running && s.latency_ms != null)
+        ? '<span class="ms">' + s.latency_ms + 'ms</span>' : '';
+      return '<li' + cls + '>' + dot + '<span>' + esc(nodeLabel(s)) + code + detail +
+        '</span>' + ms + '</li>';
+    }).join('');
+    scrollBottom();
+  }
+
+  /** 收尾：停表、去掉转圈、把标题换成结果摘要，步骤列表留在原地当回放 */
+  function finishProgress(box, title) {
+    if (box._timer) { clearInterval(box._timer); box._timer = null; }
+    const spin = box.querySelector('.spin');
+    if (spin) spin.remove();
+    const clock = box.querySelector('.clock');
+    if (clock) clock.remove();
+    const t = box.querySelector('.title');
+    if (t) t.textContent = title;
+  }
 
   function addMsg(role, text, intent) {
     const div = document.createElement('div');
@@ -281,19 +404,47 @@
     addMsg('user', text);
     input.value = '';
 
-    const typing = document.createElement('div');
-    typing.className = 'typing';
-    typing.textContent = 'Agent 思考中…';
-    messages.appendChild(typing); scrollBottom();
+    // traceId 由前端生成：这样在 /api/chat 还没返回时就能按 id 查轨迹。
+    // 若等服务端返回 id，拿到它的时候请求已经结束了——那就又回到"看不到过程"。
+    const tid = newTraceId();
+    const progress = createProgress();
+    let polling = false, timer = null, lastSteps = [];
+
+    async function poll() {
+      if (polling) return;
+      polling = true;
+      try {
+        const t = await api('GET', '/api/trace/' + tid);
+        if (t && t.steps) { lastSteps = t.steps; renderProgress(progress, t.steps); }
+      } catch (_) { /* 轮询失败不影响主请求 */ }
+      finally { polling = false; }
+    }
+    timer = setInterval(poll, 700);
+    setTimeout(poll, 200);
 
     try {
-      const r = await api('POST', '/api/chat', { userId: uid, message: text, conversationId: convId });
+      const r = await api('POST', '/api/chat',
+        { userId: uid, message: text, conversationId: convId, traceId: tid });
       if (r.conversationId) { convId = r.conversationId; $('conversationId').textContent = '会话 #' + convId; }
-      typing.remove();
-      addMsg('assistant', r.reply || '（无回复）', r.intent);
+      const div = addMsg('assistant', r.reply || '（无回复）', r.intent);
+      // 四种失败在用户侧原先长得一模一样；refusalCode 让"为什么被拒"当场可见
+      if (r.refusalCode) {
+        const tag = document.createElement('span');
+        tag.className = 'refusal-tag';
+        tag.textContent = r.refusalCode;
+        div.querySelector('.meta').appendChild(tag);
+      }
       if (r.planCard) addPlanCard(r.planCard);
+      clearInterval(timer);
+      await poll();
+      const secs = r.trace && r.trace.elapsedMs ? (r.trace.elapsedMs / 1000).toFixed(1) + 's' : null;
+      // 步数按 visibleSteps 计：RUNNING 与它的终态是同一件事的两行，不能各算一步
+      const nSteps = visibleSteps(lastSteps).length;
+      finishProgress(progress, (r.refusalCode ? '已拒绝 · ' + r.refusalCode : '完成')
+        + (secs ? ' · ' + secs : '') + (nSteps ? ' · ' + nSteps + ' 步' : ''));
     } catch (err) {
-      typing.remove();
+      clearInterval(timer);
+      finishProgress(progress, '请求出错');
       addMsg('assistant', '请求出错：' + err.message);
     } finally {
       busy = false; send.disabled = false; input.focus();
